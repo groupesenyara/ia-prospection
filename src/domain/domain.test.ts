@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addDays, today } from "./dates";
-import { findDuplicate, normName } from "./dedup";
-import { foundingAlerts, startTrial } from "./founding";
-import { objectionCounts, perfBy } from "./performance";
-import { scoreOf, signalLevel } from "./scoring";
-import { buildInteraction, campaignStatusAfterEdit, enroll, fillTemplate, patchAfter, RuleError } from "./sequence";
-import { contentSuggestions } from "./suggestions";
-import type { Campaign, Interaction, Prospect } from "./types";
-import { canApproveContent, pendingValidation } from "./validation";
+import { addDays, today } from "./dates.js";
+import { findDuplicate, normName } from "./dedup.js";
+import { foundingAlerts, startTrial } from "./founding.js";
+import { objectionCounts, perfBy } from "./performance.js";
+import { scoreOf, signalLevel } from "./scoring.js";
+import { buildInteraction, campaignStatusAfterEdit, enroll, fillTemplate, patchAfter, RuleError } from "./sequence.js";
+import { contentSuggestions } from "./suggestions.js";
+import type { Campaign, Interaction, Prospect } from "./types.js";
+import { canApproveContent, pendingValidation } from "./validation.js";
 
 const base = (o: Partial<Prospect> = {}): Prospect => ({
   id: "p1", company: "Acme", website: "", sector: "", size: "Inconnue", kind: "Entreprise qui recrute", roles: "", source: "x", verifiedAt: today(),

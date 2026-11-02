@@ -1,5 +1,5 @@
 // Consignes envoyées à Claude. Partagées entre le front (aperçu) et la fonction serveur (appel réel).
-import type { Prospect } from "./types";
+import type { Prospect } from "./types.js";
 
 export const RULES = `RÈGLES ABSOLUES
 - Utilise uniquement les informations fournies. N'invente aucun chiffre, client, témoignage, résultat, statistique, offre d'emploi, coordonnée ni fonctionnalité.

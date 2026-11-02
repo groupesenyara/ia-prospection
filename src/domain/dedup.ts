@@ -1,5 +1,5 @@
 // Déduplication des entreprises : même domaine de site, ou même nom normalisé.
-import type { Prospect } from "./types";
+import type { Prospect } from "./types.js";
 
 export const normName = (s: string): string =>
   String(s || "")

@@ -1,7 +1,7 @@
 // Ce qui se passe quand on journalise une interaction : étape du pipeline, prochaine action, avancement de la campagne.
-import { CHANNEL_OF, CONTACT_TYPES, EVENT_STAGE, FOLLOWUP, STAGES } from "./constants";
-import { addDays, today } from "./dates";
-import type { Campaign, EventType, Interaction, Prospect } from "./types";
+import { CHANNEL_OF, CONTACT_TYPES, EVENT_STAGE, FOLLOWUP, STAGES } from "./constants.js";
+import { addDays, today } from "./dates.js";
+import type { Campaign, EventType, Interaction, Prospect } from "./types.js";
 
 export type ProspectPatch = Partial<Prospect>;
 

@@ -1,8 +1,8 @@
 // Chargement des données de l'équipe + rafraîchissement en temps réel (Supabase Realtime).
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Campaign, ContentItem, Interaction, Prospect } from "../domain/types";
-import { campaignFromRow, contentFromRow, groupHistory, interactionFromRow, prospectFromRow, toRow } from "./mapping";
-import { supabase } from "./supabase";
+import type { Campaign, ContentItem, Interaction, Prospect } from "../domain/types.js";
+import { campaignFromRow, contentFromRow, groupHistory, interactionFromRow, prospectFromRow, toRow } from "./mapping.js";
+import { supabase } from "./supabase.js";
 
 export type ProspectRow = Prospect & { drafts: Record<string, unknown> | null };
 

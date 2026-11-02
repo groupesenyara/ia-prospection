@@ -1,5 +1,5 @@
 // Propositions de contenus déclenchées par l'activité commerciale (jamais publiées sans validation).
-import type { ContentItem, Prospect } from "./types";
+import type { ContentItem, Prospect } from "./types.js";
 
 export interface Suggestion { kind: string; prospectId: string | null; title: string; why: string }
 

@@ -1,8 +1,8 @@
 // Programme Founding Recruiters : 10 places, essai de 45 jours réservé aux grands comptes ABM (segment B).
-import { FOUNDING_SEATS, TRIAL_DAYS } from "./constants";
-import { addDays, daysBetween, today } from "./dates";
-import { RuleError } from "./sequence";
-import type { Prospect } from "./types";
+import { FOUNDING_SEATS, TRIAL_DAYS } from "./constants.js";
+import { addDays, daysBetween, today } from "./dates.js";
+import { RuleError } from "./sequence.js";
+import type { Prospect } from "./types.js";
 
 export function startTrial(p: Prospect, all: Prospect[], start = today()): Partial<Prospect> {
   if (p.segment !== "B") throw new RuleError("L’essai est réservé aux grands comptes du segment B");

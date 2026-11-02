@@ -1,8 +1,8 @@
 // POST /api/ai/generate — rédaction d'un message ou d'une publication par Claude, pour un membre de l'équipe.
 import Anthropic from "@anthropic-ai/sdk";
-import { prospectFromRow } from "../../src/lib/mapping";
-import { generate, HttpError, type GenerateRequest } from "../_lib/generate";
-import { adminClient, json, teamUser } from "../_lib/server";
+import { prospectFromRow } from "../../src/lib/mapping.js";
+import { generate, HttpError, type GenerateRequest } from "../_lib/generate.js";
+import { adminClient, json, teamUser } from "../_lib/server.js";
 
 export async function POST(req: Request): Promise<Response> {
   const db = adminClient();

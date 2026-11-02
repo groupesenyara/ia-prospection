@@ -1,6 +1,6 @@
 // Ce qui marche : réponses, rendez-vous et clients payants regroupés par canal, campagne, secteur ou segment.
-import { CONTACT_TYPES } from "./constants";
-import type { Interaction, Prospect } from "./types";
+import { CONTACT_TYPES } from "./constants.js";
+import type { Interaction, Prospect } from "./types.js";
 
 export interface PerfRow { key: string; contacted: number; replied: number; meetings: number; paid: number; rate: number }
 

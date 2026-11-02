@@ -1,4 +1,4 @@
-import type { EventType } from "./types";
+import type { EventType } from "./types.js";
 
 export const STAGES = [
   "Entreprise identifiée", "À qualifier", "Prospect qualifié", "À contacter", "Contact effectué",

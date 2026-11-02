@@ -1,5 +1,5 @@
 // Conversion base (snake_case) <-> application (camelCase). Les dates nulles deviennent "".
-import type { Campaign, ContentItem, Interaction, Prospect } from "../domain/types";
+import type { Campaign, ContentItem, Interaction, Prospect } from "../domain/types.js";
 
 const toCamel = (s: string) => s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 const toSnake = (s: string) => s.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase());
