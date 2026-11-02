@@ -1,5 +1,5 @@
 // File « À valider par Yannis » : rien ne part sans validation humaine.
-import type { Campaign, ContentItem, Drafts, Prospect } from "./types";
+import type { Campaign, ContentItem, Drafts, Prospect } from "./types.js";
 
 export interface PendingItem { kind: "campaign" | "drafts" | "convention" | "content"; id: string; title: string; detail: string }
 

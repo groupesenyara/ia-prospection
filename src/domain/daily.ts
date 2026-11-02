@@ -1,9 +1,9 @@
 // Préparation quotidienne : ce que l'agent prépare chaque matin. Il ne fait qu'écrire des brouillons « À valider ».
-import { CONTACT_TYPES } from "./constants";
-import { addDays, today } from "./dates";
-import { foundingAlerts } from "./founding";
-import { fillTemplate, RuleError } from "./sequence";
-import type { Campaign, Interaction, Prospect } from "./types";
+import { CONTACT_TYPES } from "./constants.js";
+import { addDays, today } from "./dates.js";
+import { foundingAlerts } from "./founding.js";
+import { fillTemplate, RuleError } from "./sequence.js";
+import type { Campaign, Interaction, Prospect } from "./types.js";
 
 export interface OutboxDraft { prospectId: string; campaignId: string; stepIndex: number; channel: string; subject: string; body: string }
 export interface DailyPlan { drafts: OutboxDraft[]; skipped: { prospectId: string; reason: string }[]; due: Prospect[]; alerts: ReturnType<typeof foundingAlerts> }

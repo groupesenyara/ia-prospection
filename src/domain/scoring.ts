@@ -1,6 +1,6 @@
 // Score de qualification transparent : 6 critères pondérés, chacun noté de 0 à 3, fait vérifié ou hypothèse.
-import { daysBetween, today } from "./dates";
-import type { Basis, Prospect } from "./types";
+import { daysBetween, today } from "./dates.js";
+import type { Basis, Prospect } from "./types.js";
 
 export interface CriterionDef { k: string; w: number; label: string; levels: string[]; auto?: boolean }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { addDays, today } from "./dates";
-import { dailyPlan, splitSubject } from "./daily";
-import type { Campaign, Prospect } from "./types";
+import { addDays, today } from "./dates.js";
+import { dailyPlan, splitSubject } from "./daily.js";
+import type { Campaign, Prospect } from "./types.js";
 
 const p = (o: Partial<Prospect>): Prospect => ({
   id: "p", company: "Acme", website: "", sector: "", size: "", kind: "", roles: "SDR, AE", source: "x", verifiedAt: today(),

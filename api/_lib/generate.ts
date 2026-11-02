@@ -1,7 +1,7 @@
 // Rédaction IA côté serveur. Les consignes sont construites ici, à partir des données en base :
 // le navigateur n'envoie jamais de prompt libre (pas de détournement, pas de facture surprise).
-import { contentPrompt, outreachPrompt } from "../../src/domain/prompts";
-import type { Prospect } from "../../src/domain/types";
+import { contentPrompt, outreachPrompt } from "../../src/domain/prompts.js";
+import type { Prospect } from "../../src/domain/types.js";
 
 export interface GenerateDeps {
   enabled: boolean;

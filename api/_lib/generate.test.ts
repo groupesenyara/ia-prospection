@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { generate, type GenerateDeps } from "./generate";
+import { generate, type GenerateDeps } from "./generate.js";
 
 const deps = (o: Partial<GenerateDeps> = {}): GenerateDeps => ({
   enabled: true, dailyLimit: 2,

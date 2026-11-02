@@ -1,8 +1,8 @@
 // GET /api/cron/daily — appelée par Vercel Cron en semaine à 6 h UTC (7 h ou 8 h à Paris).
 // Prépare les brouillons d'envoi du jour (statut « À valider ») et le rapport. N'ENVOIE RIEN.
-import { dailyPlan } from "../../src/domain/daily";
-import { campaignFromRow, groupHistory, interactionFromRow, prospectFromRow } from "../../src/lib/mapping";
-import { adminClient, json } from "../_lib/server";
+import { dailyPlan } from "../../src/domain/daily.js";
+import { campaignFromRow, groupHistory, interactionFromRow, prospectFromRow } from "../../src/lib/mapping.js";
+import { adminClient, json } from "../_lib/server.js";
 
 export async function GET(req: Request): Promise<Response> {
   if (!process.env.CRON_SECRET || req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) return json(401, { error: "Non autorisé" });
