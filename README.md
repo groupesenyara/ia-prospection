@@ -26,7 +26,7 @@ npm run build
 
 ### Supabase
 
-1. Créer le projet, puis appliquer `supabase/migrations/20261102000000_init.sql` (`supabase db push` ou éditeur SQL).
+1. Créer le projet, puis appliquer les migrations de `supabase/migrations/` dans l'ordre (`supabase db push` ou éditeur SQL). Sur le projet `ia-prospection-swipsales`, c'est déjà fait : `init`, puis `hardening`, qui active aussi le Realtime.
 2. **Auth** : activer l'e-mail (lien magique) et désactiver les inscriptions publiques. Créer les comptes de l'équipe dans *Authentication > Users*.
 3. Déclarer l'équipe (rôles : `owner` = Yannis, `editor`, `viewer`) :
    ```sql
@@ -34,7 +34,7 @@ npm run build
      ('<uuid de Yannis>', 'Yannis', 'owner'),
      ('<uuid de Joseph>', 'Joseph', 'editor');
    ```
-4. **Realtime** : activer la publication des tables `prospects`, `interactions`, `campaigns`, `content` et `outbox`.
+4. **Realtime** : activé par la migration `hardening` sur `prospects`, `interactions`, `campaigns`, `content` et `outbox`.
 5. **Reprendre les données du prototype** : les 15 entreprises sourcées, les 3 campagnes, la fiche produit et les retours. Les fichiers JSON sont dans `exports/`, livré à part et non versionné.
    ```bash
    SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run import:artifact -- exports           # simulation

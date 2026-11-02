@@ -11,7 +11,7 @@ describe("import du prototype", () => {
     const db = new PGlite();
     await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users (id uuid primary key);
       create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;`);
-    await db.exec(readFileSync("supabase/migrations/20261102000000_init.sql", "utf8"));
+    await db.exec(readFileSync("supabase/migrations/20261102125807_init.sql", "utf8"));
     const ins = async (table: string, rows: Record<string, unknown>[]) => {
       for (const r of rows) {
         const cols = Object.keys(r);

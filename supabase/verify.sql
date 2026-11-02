@@ -1,4 +1,4 @@
--- Vérification de la migration 20261102000000_init.sql sur le projet Supabase.
+-- Vérification de la migration 20261102125807_init.sql sur le projet Supabase.
 -- À coller dans l'éditeur SQL (Supabase > SQL Editor). Lecture seule : ne modifie rien.
 -- Chaque ligne doit afficher ok = true.
 
