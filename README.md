@@ -41,6 +41,7 @@ npm run build
    SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run import:artifact -- exports --write   # écriture
    ```
    Les campagnes sont réimportées **en brouillon** : Yannis les revalide.
+6. **Vérifier** : coller `supabase/verify.sql` dans l'éditeur SQL. Le script ne modifie rien et affiche 10 contrôles : tables, RLS, policies, fonctions, déclencheurs, contraintes, droits `anon`, équipe, Realtime. Chaque ligne doit afficher `ok = true`. Seul le contrôle 10 peut rester à `false` si la migration a été collée dans l'éditeur au lieu de passer par `supabase db push`.
 
 ### Vercel
 
