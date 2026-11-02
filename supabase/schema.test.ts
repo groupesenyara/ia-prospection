@@ -28,6 +28,7 @@ beforeAll(async () => {
     grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;
   `);
   await db.exec(readFileSync(new URL("./migrations/20261102000000_init.sql", import.meta.url), "utf8"));
+  await db.exec(readFileSync(new URL("./migrations/20261102000001_hardening.sql", import.meta.url), "utf8"));
   await db.exec(`
     grant usage on schema public to authenticated, anon;
     grant select, insert, update, delete on all tables in schema public to authenticated;
