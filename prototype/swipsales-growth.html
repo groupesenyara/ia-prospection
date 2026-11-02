@@ -1,0 +1,1496 @@
+<title>SwipSales Growth</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: outil de travail — barre d'onglets collante, une colonne lisible, tiroir latéral pour la fiche prospect. */
+:root{
+  --bg:#F5F6FA; --surface:#FFFFFF; --sunk:#EEF0F6; --ink:#0E1729; --muted:#5A6378; --line:#E1E5EE;
+  --accent:#1F45E6; --accent-ink:#FFFFFF; --accent-soft:#E7ECFF;
+  --good:#0D7A4C; --good-soft:#E3F5EC; --warn:#9A5800; --warn-soft:#FDF1DD; --bad:#B42318; --bad-soft:#FDE8E6;
+  --violet:#5B3FD1; --violet-soft:#EEEAFE;
+  --f-ui:"Manrope", "Segoe UI", system-ui, sans-serif;
+  --f-data:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A101C; --surface:#111A2B; --sunk:#0D1524; --ink:#E6EBF5; --muted:#99A3B7; --line:#223049;
+  --accent:#7590FF; --accent-ink:#0A101C; --accent-soft:#18244A;
+  --good:#4FD69A; --good-soft:#0F2E21; --warn:#F2B35A; --warn-soft:#352610; --bad:#FF8B80; --bad-soft:#3A1614;
+  --violet:#A996FF; --violet-soft:#221B45; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A101C; --surface:#111A2B; --sunk:#0D1524; --ink:#E6EBF5; --muted:#99A3B7; --line:#223049;
+  --accent:#7590FF; --accent-ink:#0A101C; --accent-soft:#18244A;
+  --good:#4FD69A; --good-soft:#0F2E21; --warn:#F2B35A; --warn-soft:#352610; --bad:#FF8B80; --bad-soft:#3A1614;
+  --violet:#A996FF; --violet-soft:#221B45; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-ui);font-size:14.5px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.15rem;font-weight:800}
+h3{font-size:.98rem;font-weight:700}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono,.num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.82rem}
+.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* Header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 0;display:flex;flex-direction:column;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.brand-l{display:flex;align-items:center;gap:10px}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center}
+.logo svg{width:18px;height:18px}
+.brand b{font-weight:800;font-size:1.02rem}
+.brand b span{color:var(--accent)}
+.scope{font-size:.75rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -4px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:none;padding:9px 12px 11px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab .cnt{font-family:var(--f-data);font-size:.72rem;background:var(--bad-soft);color:var(--bad);border-radius:999px;padding:0 6px}
+
+main{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
+.view{display:flex;flex-direction:column;gap:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.between{justify-content:space-between}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.notice{border-radius:var(--r);padding:12px 14px;background:var(--warn-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);font-size:.9rem}
+.notice b{color:var(--warn)}
+.notice.info{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.notice.info b{color:var(--accent)}
+
+/* KPI tiles */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .v{font-family:var(--f-data);font-size:1.45rem;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .l{font-size:.8rem;font-weight:700}
+.kpi .f{font-size:.72rem;color:var(--muted)}
+.kpi.na .v{color:var(--muted);font-size:.95rem;font-family:var(--f-ui);font-weight:700}
+.kpi .src{font-size:.7rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:4px;margin-top:2px}
+
+/* Buttons & fields */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer;display:inline-flex;gap:6px;align-items:center;font-size:.88rem}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{border-color:transparent;background:none}
+.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,transparent)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:4px 9px;font-size:.8rem}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.8rem;font-weight:700;min-width:0}
+label.f .h{font-weight:500;color:var(--muted);font-size:.74rem}
+input[type=text],input[type=url],input[type=email],input[type=date],input[type=number],input[type=search],input[type=month],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;font-size:.9rem;font-weight:500;min-width:0}
+textarea{resize:vertical;min-height:70px;line-height:1.45}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:.85rem;font-weight:600}
+.check input{margin-top:3px}
+
+/* Chips & pills */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip .n{font-family:var(--f-data);margin-left:4px;opacity:.75}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:.74rem;font-weight:700;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.g-early{background:var(--sunk);color:var(--muted)}
+.g-out{background:var(--accent-soft);color:var(--accent)}
+.g-eng{background:var(--violet-soft);color:var(--violet)}
+.g-won{background:var(--good-soft);color:var(--good)}
+.g-risk{background:var(--warn-soft);color:var(--warn)}
+.g-lost{background:var(--bad-soft);color:var(--bad)}
+.prio{font-family:var(--f-data);font-size:.76rem;border-radius:6px;padding:2px 7px;font-weight:500;white-space:nowrap}
+.prio.A{background:var(--good-soft);color:var(--good)}
+.prio.B{background:var(--warn-soft);color:var(--warn)}
+.prio.C{background:var(--sunk);color:var(--muted)}
+.tag{font-size:.72rem;font-weight:700;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--muted)}
+.tag.fact{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.tag.hyp{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+
+/* Lists */
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:11px 2px;border-top:1px solid var(--line);cursor:pointer;align-items:center}
+.item:first-child{border-top:0}
+.item:hover .t{color:var(--accent)}
+.item .t{font-weight:800;min-width:0;overflow-wrap:anywhere}
+.item .s{grid-column:1/-1;font-size:.82rem;color:var(--muted);display:flex;gap:6px 12px;flex-wrap:wrap;min-width:0}
+.item .r{display:flex;gap:6px;align-items:center;justify-self:end}
+.late{color:var(--bad);font-weight:700}
+.empty{padding:22px 8px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.empty b{color:var(--ink)}
+
+/* Bars */
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:minmax(120px,190px) 1fr 38px;gap:10px;align-items:center;font-size:.82rem}
+.bar .trk{height:10px;background:var(--sunk);border-radius:5px;overflow:hidden}
+.bar .fill{height:100%;background:var(--accent);border-radius:5px}
+.bar .n{text-align:right;font-family:var(--f-data)}
+
+/* Report */
+.report{white-space:pre-wrap;font-size:.86rem;line-height:1.6;background:var(--sunk);border-radius:8px;padding:12px 14px;overflow-x:auto;max-height:420px;overflow-y:auto}
+.report.ai{background:var(--accent-soft)}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td code{font-family:var(--f-data);font-size:.78rem;background:var(--sunk);padding:1px 5px;border-radius:4px}
+
+/* Drawer */
+.scrim{position:fixed;inset:0;background:rgba(5,10,20,.45);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);z-index:41;display:flex;flex-direction:column;border-left:1px solid var(--line);box-shadow:-12px 0 40px rgba(0,0,0,.18)}
+.dr-h{background:var(--surface);border-bottom:1px solid var(--line);padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:12px;padding-left:16px;padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:10px;align-items:center;justify-content:space-between}
+.dr-b{overflow-y:auto;padding:16px;padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px;flex:1}
+.dr-f{background:var(--surface);border-top:1px solid var(--line);padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.crit{display:grid;grid-template-columns:1fr 150px 120px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.crit:first-of-type{border-top:0}
+.crit .w{font-family:var(--f-data);font-size:.74rem;color:var(--muted)}
+.score-big{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.score-big .n{font-family:var(--f-data);font-size:2rem;line-height:1}
+.meter{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden;flex:1;min-width:120px}
+.meter i{display:block;height:100%;background:var(--accent)}
+.hist{display:flex;flex-direction:column;gap:0}
+.hist div{display:grid;grid-template-columns:88px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:.84rem}
+.hist div:first-child{border-top:0}
+.msg-out{display:flex;flex-direction:column;gap:10px}
+.msg-out .blk{display:flex;flex-direction:column;gap:4px}
+.msg-out .blk .row{justify-content:space-between}
+.confirm{background:var(--bad-soft);border-radius:8px;padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.86rem}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:999px;font-weight:700;font-size:.86rem;z-index:60;max-width:calc(100% - 32px)}
+.steps{display:flex;flex-direction:column;gap:0;counter-reset:s}
+.step{display:grid;grid-template-columns:28px 1fr auto;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:start}
+.step:first-child{border-top:0}
+.step::before{counter-increment:s;content:counter(s);font-family:var(--f-data);width:24px;height:24px;border-radius:50%;background:var(--sunk);display:grid;place-items:center;font-size:.76rem}
+ul.clean{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+
+@media (max-width:620px){
+  .crit{grid-template-columns:1fr 1fr}
+  .crit>div:first-child{grid-column:1/-1}
+  .bar{grid-template-columns:110px 1fr 30px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div class="brand-l">
+        <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="2.4" stroke-linecap="round"><path d="M15.5 6.5a4 4 0 0 0-7 2.6c0 1 .4 1.9 1.1 2.6l3.6 3.6"/><path d="M8.5 17.5a4 4 0 0 0 7-2.6c0-1-.4-1.9-1.1-2.6"/></svg></div>
+        <b>Swip<span>Sales</span> Growth</b>
+      </div>
+      <span class="scope">Agent dédié à SwipSales uniquement</span>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-tab="today" aria-selected="true">Aujourd’hui <span class="cnt" id="due-cnt" hidden></span></button>
+      <button class="tab" role="tab" data-tab="pipeline" aria-selected="false">Prospection et CRM</button>
+      <button class="tab" role="tab" data-tab="partners" aria-selected="false">Partenariats</button>
+      <button class="tab" role="tab" data-tab="founding" aria-selected="false">Founding Recruiters</button>
+      <button class="tab" role="tab" data-tab="campaigns" aria-selected="false">Campagnes</button>
+      <button class="tab" role="tab" data-tab="comms" aria-selected="false">Communication</button>
+      <button class="tab" role="tab" data-tab="metrics" aria-selected="false">Performances</button>
+      <button class="tab" role="tab" data-tab="growth" aria-selected="false">Expériences</button>
+      <button class="tab" role="tab" data-tab="costs" aria-selected="false">Coûts</button>
+      <button class="tab" role="tab" data-tab="setup" aria-selected="false">Paramètres</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="conn" class="notice" hidden></div>
+
+  <!-- AUJOURD'HUI -->
+  <section class="view" id="v-today">
+    <div class="kpis" id="today-kpis"></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-h"><h2>Relances et actions dues</h2><span class="small muted" id="today-date"></span></div>
+        <div class="list" id="due-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h2>Meilleures entreprises à contacter</h2><span class="small muted">qualifiées, pas encore contactées</span></div>
+        <div class="list" id="top-list"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Rapport</h2>
+        <div class="row">
+          <div class="chips" role="group" aria-label="Période du rapport">
+            <button class="chip" data-rep="day" aria-pressed="true">Quotidien</button>
+            <button class="chip" data-rep="week" aria-pressed="false">Hebdomadaire</button>
+          </div>
+          <button class="btn sm" id="rep-copy">Copier</button>
+          <button class="btn sm primary" id="rep-ai" hidden>Analyse par Claude</button>
+        </div>
+      </div>
+      <div class="report" id="report"></div>
+      <div class="report ai" id="report-ai" hidden></div>
+      <p class="small muted">Le rapport est calculé à partir du CRM et des relevés saisis dans Mesures. Les chiffres absents sont signalés, jamais estimés.</p>
+    </div>
+  </section>
+
+  <!-- PIPELINE -->
+  <section class="view" id="v-pipeline" hidden>
+    <div class="row between">
+      <h2>Prospection et CRM</h2>
+      <button class="btn primary" id="add-prospect">+ Ajouter une entreprise</button>
+    </div>
+    <div class="fgrid">
+      <label class="f">Rechercher<input type="search" id="q" placeholder="Entreprise, poste, secteur…"></label>
+      <label class="f">Type<select id="kind-filter"></select></label>
+      <label class="f">Segment ABM<select id="seg-filter"><option value="all">Tous</option><option value="A">A · Partenaire</option><option value="B">B · Founding</option><option value="C">C · Vente directe</option><option value="">Non segmenté</option></select></label>
+      <label class="f">Priorité<select id="prio-filter"><option value="all">Toutes</option><option value="A">A (70 et plus)</option><option value="B">B (45 à 69)</option><option value="C">C (moins de 45)</option></select></label>
+    </div>
+    <div class="chips" id="stage-chips" role="group" aria-label="Étape"></div>
+    <div class="panel"><div class="list" id="pipe-list"></div></div>
+  </section>
+
+  <!-- MESURES -->
+  <section class="view" id="v-metrics" hidden>
+    <div class="row between">
+      <h2>Performances de prospection</h2>
+      <div class="chips" role="group" aria-label="Période" id="period-chips">
+        <button class="chip" data-p="7" aria-pressed="false">7 jours</button>
+        <button class="chip" data-p="30" aria-pressed="true">30 jours</button>
+        <button class="chip" data-p="month" aria-pressed="false">Mois en cours</button>
+      </div>
+    </div>
+    <p class="small muted">Source : historique des interactions de ce CRM, calculé en direct. Une interaction compte quand elle est journalisée dans la fiche.</p>
+    <div class="kpis" id="crm-kpis"></div>
+    <div class="panel">
+      <div class="panel-h"><h3>Entreprises par étape</h3><span class="small muted">état actuel</span></div>
+      <div class="bars" id="stage-bars"></div>
+    </div>
+    <div class="row between"><h2>Ce qui marche</h2><span class="small muted">calculé sur l’historique du CRM</span></div>
+    <div id="perf"></div>
+
+    <div class="row between" style="margin-top:8px">
+      <h2>Produit et revenus</h2>
+      <label class="f" style="min-width:180px">Relevé<select id="snap-select"></select></label>
+    </div>
+    <div id="snap-meta" class="small muted"></div>
+    <div class="kpis" id="rev-kpis"></div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h3>Saisir un relevé mensuel</h3>
+        <p class="small muted">À remplir depuis Stripe, Supabase et l’outil d’analytics, ou par Claude après lecture de Stripe. Laissez vide ce que vous ne savez pas : rien n’est déduit.</p>
+        <form id="snap-form" class="fgrid">
+          <label class="f">Mois<input type="month" id="s-period" required></label>
+          <label class="f">MRR (€ HT)<input type="number" step="0.01" min="0" id="s-mrr"></label>
+          <label class="f">MRR au début du mois<input type="number" step="0.01" min="0" id="s-mrrStart"></label>
+          <label class="f">MRR perdu (résiliations + baisses)<input type="number" step="0.01" min="0" id="s-mrrLost"></label>
+          <label class="f">Abonnements payants actifs<input type="number" min="0" id="s-activeSubs"></label>
+          <label class="f">Actifs au début du mois<input type="number" min="0" id="s-activeSubsStart"></label>
+          <label class="f">Nouveaux abonnés payants<input type="number" min="0" id="s-newSubs"></label>
+          <label class="f">Abonnements résiliés<input type="number" min="0" id="s-cancelledSubs"></label>
+          <label class="f">Visiteurs uniques<input type="number" min="0" id="s-visitors"></label>
+          <label class="f">Inscriptions recruteurs<input type="number" min="0" id="s-recruiterSignups"></label>
+          <label class="f">Inscriptions candidats<input type="number" min="0" id="s-candidateSignups"></label>
+          <label class="f">Profils candidats complétés<input type="number" min="0" id="s-candidateCompleted"></label>
+          <label class="f">Marge brute (%)<input type="number" min="0" max="100" id="s-grossMargin"></label>
+          <label class="f" style="grid-column:1/-1">Source (obligatoire)<span class="h">Ex. « Stripe, tableau de bord Abonnements, lu le 19/10 » ou « export Supabase table profiles »</span><input type="text" id="s-source" required></label>
+          <div class="row" style="grid-column:1/-1"><button class="btn primary" type="submit">Enregistrer le relevé</button></div>
+        </form>
+      </div>
+
+    </div>
+
+    <div class="panel">
+      <h3>Définitions des indicateurs</h3>
+      <div class="tbl-wrap"><table id="defs"></table></div>
+    </div>
+  </section>
+
+  <!-- CANDIDATS -->
+  <section class="view" id="v-comms" hidden>
+    <div class="row between"><h2>Communication</h2><button class="btn primary" id="add-content">+ Nouveau contenu</button></div>
+    <div class="notice info"><b>Règles :</b> aucune entreprise, aucun partenaire ni aucune offre cités sans accord écrit ; aucun prix ni chiffre sur SwipSales ; témoignages réels uniquement. Le calendrier détaillé est dans le doc de Léane.</div>
+    <div class="panel">
+      <div class="panel-h"><h3>Propositions de l’agent</h3><span class="small muted">déclenchées par l’activité commerciale</span></div>
+      <div class="list" id="sug-list"></div>
+    </div>
+    <div class="panel" id="content-form-panel" hidden>
+      <div class="fgrid">
+        <label class="f" style="grid-column:1/-1">Titre<input type="text" id="k-title"></label>
+        <div style="grid-column:1/-1"><b class="small">Réseaux</b><div class="row" id="k-networks"></div></div>
+        <label class="f">Format<input type="text" id="k-format" placeholder="Carrousel, démo, UGC IA, post texte…"></label>
+        <label class="f">Cible<select id="k-target"><option>Recruteur</option><option>Candidat</option><option>Partenaire</option><option>Les deux</option></select></label>
+        <label class="f">Date prévue<input type="date" id="k-date"></label>
+        <label class="f">Statut<select id="k-status"></select></label>
+        <label class="f">Entreprise citée<select id="k-prospect"></select></label>
+        <label class="f" style="grid-column:1/-1">Accroche<input type="text" id="k-hook"></label>
+        <label class="f" style="grid-column:1/-1">Texte<textarea id="k-text" rows="8"></textarea></label>
+        <label class="f" style="grid-column:1/-1">Appel à l’action<input type="text" id="k-cta"></label>
+        <div class="row" style="grid-column:1/-1"><button class="btn primary" type="button" id="k-save">Enregistrer</button><button class="btn" type="button" id="k-copy">Copier le texte</button><button class="btn ghost" type="button" id="k-cancel">Fermer</button><button class="btn danger" type="button" id="k-del" hidden>Supprimer</button></div>
+      </div>
+    </div>
+    <div class="chips" id="content-chips" role="group" aria-label="Statut"></div>
+    <div class="panel"><div class="list" id="content-list"></div></div>
+    <h2>Acquisition et activation des candidats</h2>
+    <div class="notice info"><b>Règle :</b> le placement reste gratuit pour les candidats (swipes, candidatures, messagerie, visibilité). Les offres candidat payantes ne couvrent que des services d’accompagnement de carrière autonomes. Aucune relance ne promet un emploi ou un résultat.</div>
+    <div class="panel">
+      <div class="panel-h"><h3>Parcours candidat mesuré</h3><span class="small muted" id="cand-src"></span></div>
+      <div class="tbl-wrap"><table id="cand-funnel"></table></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Sources d’acquisition à tester</h3>
+        <div class="steps" id="cand-plan"></div>
+      </div>
+      <div class="panel">
+        <h3>Messages d’activation</h3>
+        <p class="small muted">Modèles pour les scénarios Brevo ou un message manuel. À relire avant tout envoi.</p>
+        <div class="msg-out" id="cand-msgs"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPÉRIENCES -->
+  <section class="view" id="v-growth" hidden>
+    <div class="row between"><h2>Expériences de croissance</h2><button class="btn primary" id="add-exp">+ Nouvelle expérience</button></div>
+    <div class="panel" id="exp-form-panel" hidden>
+      <form id="exp-form" class="fgrid">
+        <label class="f" style="grid-column:1/-1">Titre<input type="text" id="e-title" required></label>
+        <label class="f" style="grid-column:1/-1">Hypothèse<span class="h">« Si on fait X pour la cible Y, alors Z augmente, parce que… »</span><textarea id="e-hyp" required></textarea></label>
+        <label class="f">Cible<input type="text" id="e-target"></label>
+        <label class="f">Canal<input type="text" id="e-channel"></label>
+        <label class="f">Budget maximal (€)<span class="h">0 = organique</span><input type="number" min="0" step="1" id="e-budget" value="0"></label>
+        <label class="f">Durée (jours)<input type="number" min="1" id="e-days" value="14"></label>
+        <label class="f">Début<input type="date" id="e-start"></label>
+        <label class="f">Indicateur suivi<input type="text" id="e-metric" placeholder="Taux de réponse e-mail"></label>
+        <label class="f">Seuil de réussite<input type="text" id="e-threshold" placeholder="≥ 8 % sur 50 envois"></label>
+        <label class="f">Statut<select id="e-status"><option>Proposée</option><option>Validée</option><option>En cours</option><option>Terminée</option></select></label>
+        <label class="check" style="grid-column:1/-1"><input type="checkbox" id="e-validated"> Budget validé explicitement par Yannis (obligatoire pour démarrer une expérience payante)</label>
+        <label class="f" style="grid-column:1/-1">Résultat observé<textarea id="e-result" placeholder="Chiffres réels et source"></textarea></label>
+        <label class="f">Décision<select id="e-decision"><option value="">—</option><option>Garder et amplifier</option><option>Itérer</option><option>Arrêter</option></select></label>
+        <div class="row" style="grid-column:1/-1"><button class="btn primary" type="submit">Enregistrer</button><button class="btn ghost" type="button" id="e-cancel">Annuler</button><button class="btn danger" type="button" id="e-del" hidden>Supprimer</button></div>
+      </form>
+    </div>
+    <div class="panel"><div class="list" id="exp-list"></div></div>
+
+    <div class="row between" style="margin-top:8px"><h2>Retours produit et blocages</h2><button class="btn" id="add-fb">+ Signaler</button></div>
+    <div class="panel" id="fb-form-panel" hidden>
+      <form id="fb-form" class="fgrid">
+        <label class="f" style="grid-column:1/-1">Problème<input type="text" id="fb-title" required></label>
+        <label class="f" style="grid-column:1/-1">Détail<textarea id="fb-detail"></textarea></label>
+        <label class="f">Source<input type="text" id="fb-source" placeholder="Retour client, capture, test…"></label>
+        <label class="f">Étape touchée<select id="fb-stage"><option>Inscription</option><option>Profil</option><option>Recherche / swipe</option><option>Interaction</option><option>Paiement</option><option>Rétention</option><option>Autre</option></select></label>
+        <label class="f">Statut<select id="fb-status"><option>Ouvert</option><option>À reproduire</option><option>Résolu</option></select></label>
+        <div class="row" style="grid-column:1/-1"><button class="btn primary" type="submit">Enregistrer</button><button class="btn ghost" type="button" id="fb-cancel">Annuler</button><button class="btn danger" type="button" id="fb-del" hidden>Supprimer</button></div>
+      </form>
+    </div>
+    <div class="panel"><div class="list" id="fb-list"></div></div>
+  </section>
+
+  <!-- RÉGLAGES -->
+  <section class="view" id="v-partners" hidden>
+    <div class="row between"><h2>Partenariats</h2><button class="btn primary" data-add="1">+ Ajouter un acteur</button></div>
+    <p class="small muted">Écoles et formations, cabinets de recrutement, apporteurs d’affaires et autres partenaires (segment A). Le statut et le modèle se gèrent dans la fiche ; toute convention passe par la validation de Yannis.</p>
+    <div class="chips" id="partner-chips" role="group" aria-label="Statut du partenariat"></div>
+    <div class="panel"><div class="list" id="partner-list"></div></div>
+  </section>
+
+  <section class="view" id="v-founding" hidden>
+    <h2>Founding Recruiters</h2>
+    <p class="small muted">Grands comptes ABM (segment B) : 10 places, essai de 45 jours sur invitation, en échange d’offres réelles, d’un retour et, si satisfaits, d’une référence. Pas d’essai en vente directe.</p>
+    <div class="kpis" id="founding-kpis"></div>
+    <div class="grid2">
+      <div class="panel"><div class="panel-h"><h3>Échéances du programme</h3><span class="small muted">J+7, J+15, J+35, J+40, J+43</span></div><div class="list" id="founding-alerts"></div></div>
+      <div class="panel"><h3>Entreprises du programme</h3><div class="list" id="founding-list"></div></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-campaigns" hidden>
+    <div class="panel">
+      <div class="panel-h"><h2>À valider par Yannis</h2><span class="small muted">rien ne part sans validation</span></div>
+      <div class="list" id="val-list"></div>
+    </div>
+    <div class="row between"><h2>Campagnes</h2><button class="btn primary" id="add-camp">+ Nouvelle campagne</button></div>
+    <div class="panel" id="camp-form-panel" hidden>
+      <div class="fgrid">
+        <label class="f" style="grid-column:1/-1">Nom<input type="text" id="c-name"></label>
+        <label class="f">Segment<select id="c-segment"></select></label>
+        <label class="f">Plafond d’envois par jour<input type="number" min="1" max="50" id="c-cap"></label>
+        <label class="f" style="grid-column:1/-1">Objectif<input type="text" id="c-goal" placeholder="Ex. une démo de 15 minutes"></label>
+        <label class="f" style="grid-column:1/-1">Angle<input type="text" id="c-angle"></label>
+        <label class="f" style="grid-column:1/-1">Appel à l’action<input type="text" id="c-cta"></label>
+      </div>
+      <div class="panel-h"><h3>Étapes</h3><span class="small muted">Statut : <b id="c-status"></b></span></div>
+      <div id="c-steps"></div>
+      <div class="row"><button class="btn sm" type="button" id="c-add-step">+ Ajouter une étape</button></div>
+      <p class="small muted">Une campagne validée puis modifiée repasse en brouillon : elle doit être revalidée avant tout nouvel envoi. LinkedIn et téléphone restent manuels ; WhatsApp seulement pour les contacts qui l’ont accepté.</p>
+      <div class="row"><button class="btn primary" type="button" id="c-save">Enregistrer</button><button class="btn" type="button" id="c-validate">Valider la campagne</button><button class="btn" type="button" id="c-pause" hidden>Mettre en pause</button><button class="btn ghost" type="button" id="c-cancel">Fermer</button><button class="btn danger" type="button" id="c-del" hidden>Supprimer</button></div>
+    </div>
+    <div class="panel"><div class="list" id="camp-list"></div></div>
+  </section>
+
+  <section class="view" id="v-costs" hidden>
+    <h2>Coûts</h2>
+    <div class="notice"><b>Règle :</b> aucun abonnement ni achat sans accord de Yannis. Chaque nouveau service est présenté avec son usage, son coût fixe, son coût variable et une alternative gratuite.</div>
+    <div class="kpis" id="cost-kpis"></div>
+    <div class="panel"><h3>Services utilisés et proposés</h3><div class="tbl-wrap"><table id="services"></table></div></div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Dépenses d’acquisition</h3>
+        <p class="small muted">Utilisées pour le CAC. Toute dépense nouvelle doit être validée par Yannis avant engagement.</p>
+        <form id="spend-form" class="fgrid">
+          <label class="f">Date<input type="date" id="sp-date" required></label>
+          <label class="f">Canal<select id="sp-channel"><option>Publicité</option><option>Outil de prospection</option><option>Commission affiliation</option><option>Rémunération commerciale</option><option>Événement</option><option>Autre</option></select></label>
+          <label class="f">Montant (€ HT)<input type="number" step="0.01" min="0" id="sp-amount" required></label>
+          <label class="f">Détail<input type="text" id="sp-note"></label>
+          <div class="row" style="grid-column:1/-1"><button class="btn" type="submit">Ajouter la dépense</button></div>
+        </form>
+        <div class="list" id="spend-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-setup" hidden>
+    <div class="panel">
+      <div class="panel-h"><h2>Fiche produit</h2><span class="small muted">seuls les faits « Confirmé » sont utilisés dans les messages</span></div>
+      <div class="fgrid">
+        <label class="f">Expéditeur des messages<input type="text" id="sender"></label>
+        <label class="f">Signature<input type="text" id="signature"></label>
+      </div>
+      <div class="list" id="facts"></div>
+      <div class="row"><input type="text" id="new-fact" placeholder="Nouveau fait produit, vérifié dans l’application" style="flex:1;min-width:220px"><button class="btn" id="add-fact">Ajouter</button><button class="btn primary" id="save-product">Enregistrer la fiche</button></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Intégrations</h2><span class="small muted" id="integ-date"></span></div>
+      <div class="tbl-wrap"><table id="integ"></table></div>
+    </div>
+    <div class="panel">
+      <h2>Règles de l’agent</h2>
+      <ul class="clean small">
+        <li>Aucun message n’est envoyé depuis cet outil. Vous copiez, relisez, envoyez vous-même, puis journalisez l’envoi.</li>
+        <li>Aucune coordonnée, offre d’emploi, signal d’achat, client, témoignage ou chiffre n’est inventé. Chaque prospect garde sa source et sa date de vérification.</li>
+        <li>Une inscription gratuite n’est jamais comptée comme un client. « Client payant » exige un abonnement Stripe vérifié.</li>
+        <li>Aucune dépense, modification de tarif, de parcours de paiement ou de production sans validation explicite.</li>
+        <li>Pas d’affirmation « plus rapide, moins cher, meilleur » sans preuve mesurée.</li>
+        <li>RGPD : prospection B2B sur adresse professionnelle, intérêt légitime, source notée, droit d’opposition respecté (case « Ne plus contacter »).</li>
+        <li>Périmètre : SwipSales seulement. Les cartes NFC, sites web, agents IA et autres offres restent dans le BizDev Agent de Joseph.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Fiche entreprise">
+  <div class="dr-h">
+    <div style="min-width:0"><div class="eyebrow" id="dr-eyebrow">Nouvelle entreprise</div><h2 id="dr-title" style="overflow-wrap:anywhere">—</h2></div>
+    <button class="btn ghost" id="dr-close" aria-label="Fermer">Fermer</button>
+  </div>
+  <div class="dr-b" id="dr-body"></div>
+  <div class="dr-f">
+    <div class="row" id="dr-del-zone"><button class="btn danger" id="dr-del">Supprimer</button></div>
+    <div class="row"><button class="btn" id="dr-cancel">Annuler</button><button class="btn primary" id="dr-save">Enregistrer</button></div>
+  </div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+"use strict";
+/* ---------- Constantes ---------- */
+const STAGES=["Entreprise identifiée","À qualifier","Prospect qualifié","À contacter","Contact effectué","Réponse reçue","Rendez-vous planifié","Démonstration réalisée","Offre présentée","Abonnement commencé","Client payant","Client à risque","Client perdu","À recontacter","Essai Founding en cours"];
+const STAGE_GROUP=["g-early","g-early","g-out","g-out","g-out","g-eng","g-eng","g-eng","g-eng","g-won","g-won","g-risk","g-lost","g-early","g-eng"];
+const KINDS=["Entreprise qui recrute","Cabinet de recrutement","École / formation (partenaire)","Apporteur d'affaires","Autre partenaire"];
+const SIZES=["Inconnue","1–10","11–50","51–200","201–500","Plus de 500"];
+const CRIT=[
+ {k:"volume",w:25,label:"Volume et fréquence des recrutements commerciaux",lv:["Aucun recrutement commercial repéré","Un poste ponctuel","2 à 3 postes, ou recrutements réguliers","4 postes ou plus, ou recrutement continu"]},
+ {k:"pertinence",w:20,label:"Pertinence des postes recherchés",lv:["Pas un poste commercial","Poste commercial annexe (ADV, support)","SDR, BDR, commercial sédentaire ou terrain","Plusieurs profils sales (SDR, AE, closer, BizDev)"]},
+ {k:"fit",w:15,label:"Adéquation avec SwipSales",lv:["Hors cible","Adéquation faible","Bonne adéquation","Cas d’usage idéal"]},
+ {k:"access",w:15,label:"Accès au décideur",lv:["Décideur inconnu","Décideur identifié, sans canal","Décideur identifié et un canal pro","Décideur, canal et lien existant"]},
+ {k:"signal",w:15,label:"Signal d’achat récent (calculé)",lv:["Aucun signal sourcé","Signal de plus de 90 jours","Signal de 31 à 90 jours","Signal de moins de 30 jours"],auto:true},
+ {k:"recurrence",w:10,label:"Probabilité d’abonnement récurrent",lv:["Faible","Moyenne","Bonne","Forte"]}
+];
+const EVT={contact_email:"E-mail envoyé",contact_linkedin:"Message LinkedIn envoyé",contact_appel:"Appel passé",contact_whatsapp:"Message WhatsApp envoyé",reponse:"Réponse reçue",rdv:"Rendez-vous fixé",demo:"Démo réalisée",offre:"Offre présentée",objection:"Objection entendue",note:"Note"};
+const EVT_STAGE={contact_whatsapp:4,contact_email:4,contact_linkedin:4,contact_appel:4,reponse:5,rdv:6,demo:7,offre:8};
+const CONTACT_TYPES=["contact_email","contact_linkedin","contact_appel","contact_whatsapp"];
+const FOLLOWUP=[null,{d:3,a:"Relance 1 (autre canal)"},{d:4,a:"Relance 2 : question courte"},{d:7,a:"Dernier message, puis clore"},{d:90,a:"Recontacter dans 3 mois"}];
+
+/* ---------- Utilitaires ---------- */
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const localISO=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+const today=()=>localISO(new Date());
+const addDays=(s,n)=>{const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);return localISO(d)};
+const daysBetween=(a,b)=>Math.round((new Date(b+"T12:00:00")-new Date(a+"T12:00:00"))/864e5);
+const frDate=s=>{if(!s)return"";const[y,m,d]=s.slice(0,10).split("-");return`${d}/${m}/${y}`};
+const eur=n=>n==null||isNaN(n)?"—":new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:n%1?2:0}).format(n);
+const pct=n=>n==null||!isFinite(n)?"—":(Math.round(n*1000)/10).toLocaleString("fr-FR")+" %";
+const num=v=>v===""||v==null?null:Number(v);
+const normName=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\b(sas|sasu|sarl|sa|eurl|sci|groupe|group|france)\b/g,"").replace(/[^a-z0-9]/g,"");
+const domainOf=u=>{if(!u)return"";try{const x=new URL(/^https?:/i.test(u)?u:"https://"+u);return x.hostname.replace(/^www\./,"").toLowerCase()}catch{return""}};
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,2600)}
+async function copy(text,btn){try{await navigator.clipboard.writeText(text);toast("Copié")}catch{const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast("Copié")}catch{toast("Copie impossible : sélectionnez le texte")}ta.remove()}}
+
+/* ---------- Score ---------- */
+function signalLevel(p){
+  if(!p.signal||!p.signalSource)return 0;
+  if(!p.signalDate)return 1;
+  const age=daysBetween(p.signalDate,today());
+  return age<=30?3:age<=90?2:1;
+}
+function scoreOf(p){
+  const c=p.crit||{};let total=0,fact=0;const parts=[];
+  for(const k of CRIT){
+    const v=k.auto?signalLevel(p):Math.max(0,Math.min(3,Number(c[k.k]?.v)||0));
+    const b=k.auto?(p.signalSource?"f":"h"):(c[k.k]?.b==="f"?"f":"h");
+    const pts=k.w*v/3;total+=pts;if(b==="f")fact+=pts;parts.push({...k,v,b,pts});
+  }
+  total=Math.round(total);fact=Math.round(fact);
+  return{total,fact,parts,prio:total>=70?"A":total>=45?"B":"C"};
+}
+
+/* ---------- État ---------- */
+const S={db:null,user:null,sample:null,canWrite:true,ready:false,
+  prospects:[],metrics:[],spend:[],experiments:[],feedback:[],product:null,integrations:null,
+  tab:"today",seg:"all",stage:"all",kind:"all",prio:"all",q:"",period:"30",rep:"day",snap:null,
+  open:null,isNew:false,draft:null,pendingDel:false,editExp:null,editFb:null};
+const queue={};
+function writeDoc(path,fn){queue[path]=(queue[path]||Promise.resolve()).then(fn).catch(e=>{console.error(e);toast(e?.code==="invalid_argument"?"Écriture refusée : droits insuffisants ou donnée invalide":e?.code==="quota_exceeded"?"Base pleine : supprimez des éléments":"Échec de l’enregistrement, réessayez")});return queue[path]}
+
+/* ---------- Onglets ---------- */
+function setTab(t){S.tab=t;$$(".tab").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===t)));$$("main>.view").forEach(v=>v.hidden=v.id!=="v-"+t);try{localStorage.setItem("ssg-tab",t)}catch{}render()}
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(b)setTab(b.dataset.tab)});
+
+/* ---------- Calculs CRM ---------- */
+function periodStart(){
+  if(S.period==="month"){const t=today();return t.slice(0,8)+"01"}
+  return addDays(today(),-(Number(S.period)-1));
+}
+function eventsSince(from){const out=[];for(const p of S.prospects)for(const h of p.history||[])if((h.d||"")>=from)out.push({...h,p});return out}
+function crmStats(from){
+  const ev=eventsSince(from);const c=t=>ev.filter(e=>t.includes(e.t)).length;
+  const contactedCos=new Set(ev.filter(e=>CONTACT_TYPES.includes(e.t)).map(e=>e.p.id)).size;
+  const repliedCos=new Set(ev.filter(e=>e.t==="reponse").map(e=>e.p.id)).size;
+  return{contacts:c(CONTACT_TYPES),cos:contactedCos,replies:c(["reponse"]),repliedCos,rdv:c(["rdv"]),demo:c(["demo"]),offre:c(["offre"]),
+    qualified:S.prospects.filter(p=>{const i=STAGES.indexOf(p.stage);return i>=2&&i!==12}).length,
+    paid:S.prospects.filter(p=>p.stage==="Client payant"&&p.stripeVerified&&/^sub_/.test(p.stripeSubId||"")).length};
+}
+function dueList(){const t=today();return S.prospects.filter(p=>!p.optOut&&p.nextDate&&p.nextDate<=t&&!["Client perdu"].includes(p.stage)).sort((a,b)=>a.nextDate.localeCompare(b.nextDate))}
+function topToContact(){return S.prospects.filter(p=>!p.optOut&&["Prospect qualifié","À contacter"].includes(p.stage)).map(p=>({p,s:scoreOf(p)})).sort((a,b)=>b.s.total-a.s.total).slice(0,6)}
+
+/* ---------- Rendu : éléments ---------- */
+function stagePill(s){const i=STAGES.indexOf(s);return`<span class="pill ${STAGE_GROUP[i]||"g-early"}">${esc(s||"—")}</span>`}
+function prospectItem(p,extra=""){
+  const s=scoreOf(p);const t=today();
+  const late=p.nextDate&&p.nextDate<t;
+  const next=p.nextAction||p.nextDate?`<span class="${late?"late":""}">${esc(p.nextAction||"Action")} · ${p.nextDate?frDate(p.nextDate):"sans date"}</span>`:"";
+  return`<div class="item" data-open="${esc(p.id)}" tabindex="0" role="button">
+    <div class="t">${esc(p.company)}${p.optOut?' <span class="tag">Ne plus contacter</span>':""}</div>
+    <div class="r"><span class="prio ${s.prio}" title="Score ${s.total}/100, dont ${s.fact} sur faits vérifiés">${s.prio} · ${s.total}</span>${stagePill(p.stage)}</div>
+    <div class="s">${p.segment?`<span class="tag">${esc({A:"A · Partenaire",B:"B · Founding",C:"C · Vente directe"}[p.segment])}</span>`:""}${p.kind&&p.kind!==KINDS[0]?`<span>${esc(p.kind)}</span>`:""}${p.roles?`<span>${esc(p.roles)}</span>`:""}${p.sector?`<span>${esc(p.sector)}</span>`:""}${next}${extra}</div>
+  </div>`;
+}
+function emptyBlock(title,text,btn){return`<div class="empty"><b>${esc(title)}</b><span>${esc(text)}</span>${btn||""}</div>`}
+function kpi(label,value,formula,src,na){return`<div class="kpi${na?" na":""}"><div class="l">${esc(label)}</div><div class="v">${na?esc(na):value}</div>${formula?`<div class="f">${esc(formula)}</div>`:""}${src?`<div class="src">${esc(src)}</div>`:""}</div>`}
+
+/* ---------- Rendu : Aujourd'hui ---------- */
+function renderToday(){
+  $("#today-date").textContent=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+  const due=dueList();const st7=crmStats(addDays(today(),-6));
+  const notContactedA=S.prospects.filter(p=>!p.optOut&&["Prospect qualifié","À contacter"].includes(p.stage)&&scoreOf(p).prio==="A").length;
+  $("#today-kpis").innerHTML=
+    kpi("Actions dues",`<span class="${due.length?"late":""}">${due.length}</span>`,"date de prochaine action ≤ aujourd’hui","CRM")+
+    kpi("Priorité A à contacter",notContactedA,"score ≥ 70, étape qualifié ou à contacter","CRM")+
+    kpi("Contacts (7 j)",st7.contacts,"e-mails, LinkedIn et appels journalisés","CRM")+
+    kpi("Réponses (7 j)",st7.replies,"réponses journalisées","CRM")+
+    kpi("Rendez-vous (7 j)",st7.rdv,"rendez-vous journalisés","CRM")+
+    kpi("Clients payants vérifiés",st7.paid,"étape Client payant + abonnement Stripe vérifié","CRM, saisie manuelle de l’ID Stripe");
+  $("#due-list").innerHTML=due.length?due.slice(0,12).map(p=>prospectItem(p)).join(""):emptyBlock("Rien d’urgent","Les relances apparaissent ici à leur date.");
+  const top=topToContact();
+  $("#top-list").innerHTML=top.length?top.map(x=>prospectItem(x.p)).join(""):emptyBlock("Aucune entreprise qualifiée en attente","Ajoutez des entreprises dans Pipeline et notez leurs critères.",`<button class="btn sm" data-go="pipeline">Ouvrir le pipeline</button>`);
+  $("#report").textContent=buildReport(S.rep);
+  const n=due.length;const c=$("#due-cnt");c.hidden=!n;c.textContent=n;
+}
+
+function latestSnap(){return[...S.metrics].sort((a,b)=>(b.period||"").localeCompare(a.period||""))[0]||null}
+function buildReport(kind){
+  const days=kind==="week"?7:1;const from=addDays(today(),-(days-1));const st=crmStats(from);
+  const due=dueList();const top=topToContact().slice(0,3);const snap=latestSnap();
+  const L=[];const title=kind==="week"?`Bilan hebdomadaire SwipSales — semaine du ${frDate(addDays(today(),-6))} au ${frDate(today())}`:`Rapport SwipSales — ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}`;
+  L.push(title,"");
+  L.push("1. Opportunités prioritaires");
+  if(top.length)top.forEach(x=>L.push(`   • ${x.p.company} — score ${x.s.total}/100 (${x.s.fact} sur faits vérifiés)${x.p.signal?" — signal : "+x.p.signal.slice(0,90):""}`));else L.push("   • Aucune entreprise qualifiée en attente de contact.");
+  L.push("","2. Actions de prospection à réaliser");
+  if(due.length)due.slice(0,8).forEach(p=>L.push(`   • ${p.company} : ${p.nextAction||"action"} (prévue le ${frDate(p.nextDate)})`));else L.push("   • Aucune relance due.");
+  L.push("","3. Inscriptions et activations");
+  if(snap){const v=snap.values||{};const f=(x,l)=>x!=null?`${x} ${l}`:`${l} : non mesuré`;L.push(`   • Dernier relevé (${snap.period}, source : ${snap.source}) : ${f(v.recruiterSignups,"inscriptions recruteurs")}, ${f(v.candidateSignups,"inscriptions candidats")}, ${f(v.candidateCompleted,"profils complétés")}.`)}
+  else L.push("   • Non mesuré : aucun relevé produit saisi, Supabase et analytics non connectés.");
+  L.push("",`4. Résultats observés (${days===1?"aujourd’hui":"7 derniers jours"}, CRM)`);
+  const pl=(n,a,b)=>`${n} ${n>1?b:a}`;
+  L.push(`   • ${pl(st.contacts,"contact","contacts")} sur ${pl(st.cos,"entreprise","entreprises")}, ${pl(st.replies,"réponse","réponses")}, ${st.rdv} rendez-vous, ${pl(st.demo,"démo","démos")}, ${pl(st.offre,"offre","offres")}.`);
+  if(st.contacts)L.push(`   • Taux de réponse : ${pct(st.repliedCos/st.cos)} des entreprises contactées sur la période.`);
+  if(kind==="week"){const ex=S.experiments;const run=ex.filter(e=>e.status==="En cours"),done=ex.filter(e=>e.status==="Terminée"&&e.decision);
+    L.push(`   • Expériences en cours : ${run.length?run.map(e=>e.title).join(", "):"aucune"}.`);
+    if(done.length)done.slice(0,5).forEach(e=>L.push(`   • ${e.title} → ${e.decision}${e.result?" ("+e.result.slice(0,80)+")":""}`));}
+  L.push("","5. Blocages détectés");
+  const bl=[];S.feedback.filter(f=>f.status!=="Résolu").forEach(f=>bl.push(`${f.title} [${f.stage||"?"}]`));
+  (S.integrations?.items||[]).filter(i=>i.state!=="ok").forEach(i=>bl.push(`${i.name} : ${i.state==="partial"?"partiel":"non connecté"}`));
+  if(bl.length)bl.slice(0,8).forEach(b=>L.push("   • "+b));else L.push("   • Aucun blocage ouvert.");
+  L.push("","6. Trois prochaines actions à plus fort impact potentiel");
+  nextActions(due,top,snap).slice(0,3).forEach((a,i)=>L.push(`   ${i+1}. ${a}`));
+  return L.join("\n");
+}
+function nextActions(due,top,snap){
+  const a=[];
+  if(due.length)a.push(`Traiter les ${due.length} relance(s) dues — une relance non faite est une conversation perdue.`);
+  if(top.length)a.push(`Contacter ${top.map(x=>x.p.company).join(", ")} avec les messages préparés (à relire avant envoi).`);
+  const stripe=(S.integrations?.items||[]).find(i=>/stripe/i.test(i.name));
+  if(!snap||!stripe||stripe.state!=="ok")a.push("Connecter Stripe (lecture seule) pour mesurer MRR, abonnements et résiliations réels.");
+  const q=S.prospects.filter(p=>STAGES.indexOf(p.stage)>=2).length;
+  if(q<20)a.push(`Qualifier ${20-q} entreprise(s) de plus pour atteindre une base de 20 prospects qualifiés.`);
+  if(S.feedback.some(f=>f.status!=="Résolu"))a.push("Reproduire et corriger le blocage produit ouvert avant d’envoyer du trafic.");
+  a.push("Journaliser chaque envoi et chaque réponse pour mesurer le taux de réponse par canal.");
+  return a;
+}
+
+/* ---------- Rendu : Pipeline ---------- */
+function filtered(){
+  const q=normName(S.q);
+  return S.prospects.filter(p=>{
+    if(S.stage!=="all"&&p.stage!==S.stage)return false;
+    if(S.kind!=="all"&&(p.kind||KINDS[0])!==S.kind)return false;
+    if(S.prio!=="all"&&scoreOf(p).prio!==S.prio)return false;
+    if(S.seg!=="all"&&(p.segment||"")!==S.seg)return false;
+    if(q&&!normName([p.company,p.roles,p.sector,p.decisionName,p.signal].join(" ")).includes(q))return false;
+    return true;
+  }).sort((a,b)=>scoreOf(b).total-scoreOf(a).total);
+}
+function renderPipeline(){
+  const counts={};S.prospects.forEach(p=>counts[p.stage]=(counts[p.stage]||0)+1);
+  $("#stage-chips").innerHTML=`<button class="chip" data-stage="all" aria-pressed="${S.stage==="all"}">Toutes<span class="n">${S.prospects.length}</span></button>`+STAGES.map(s=>`<button class="chip" data-stage="${esc(s)}" aria-pressed="${S.stage===s}">${esc(s)}<span class="n">${counts[s]||0}</span></button>`).join("");
+  const ks=$("#kind-filter");if(!ks.options.length)ks.innerHTML=`<option value="all">Tous</option>`+KINDS.map(k=>`<option>${esc(k)}</option>`).join("");
+  const list=filtered();
+  $("#pipe-list").innerHTML=list.length?list.map(p=>prospectItem(p)).join(""):S.prospects.length?emptyBlock("Aucun résultat","Modifiez les filtres."):emptyBlock("Le pipeline est vide","Ajoutez une entreprise qui recrute des commerciaux, avec la source qui le prouve (offre d’emploi, page carrière, annonce de levée).",`<button class="btn primary sm" data-add="1">+ Ajouter une entreprise</button>`);
+}
+$("#stage-chips").addEventListener("click",e=>{const b=e.target.closest("[data-stage]");if(b){S.stage=b.dataset.stage;renderPipeline()}});
+$("#q").addEventListener("input",e=>{S.q=e.target.value;renderPipeline()});
+$("#kind-filter").addEventListener("change",e=>{S.kind=e.target.value;renderPipeline()});
+$("#prio-filter").addEventListener("change",e=>{S.prio=e.target.value;renderPipeline()});
+$("#seg-filter").addEventListener("change",e=>{S.seg=e.target.value;renderPipeline()});
+document.addEventListener("click",e=>{
+  const o=e.target.closest("[data-open]");if(o){openProspect(o.dataset.open);return}
+  const g=e.target.closest("[data-go]");if(g){setTab(g.dataset.go);return}
+  if(e.target.closest("[data-add]"))openProspect(null);
+});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"){const o=e.target.closest?.("[data-open]");if(o)openProspect(o.dataset.open)}if(e.key==="Escape"&&!$("#drawer").hidden)closeDrawer()});
+$("#add-prospect").addEventListener("click",()=>openProspect(null));
+
+/* ---------- Fiche prospect ---------- */
+function blankProspect(){return{company:"",website:"",sector:"",size:SIZES[0],kind:KINDS[0],roles:"",source:"",verifiedAt:today(),decisionName:"",decisionTitle:"",decisionVerified:false,email:"",linkedin:"",phone:"",contactSource:"",signal:"",signalSource:"",signalDate:"",need:"",crit:{},stage:STAGES[0],nextAction:"Qualifier",nextDate:today(),stripeSubId:"",stripeVerified:false,optOut:false,notes:"",history:[],drafts:null}}
+function openProspect(id){
+  S.isNew=!id;S.pendingDel=false;
+  const p=id?S.prospects.find(x=>x.id===id):null;
+  if(id&&!p){toast("Fiche introuvable");return}
+  S.open=id;S.draft=JSON.parse(JSON.stringify(p||blankProspect()));
+  $("#dr-eyebrow").textContent=id?"Fiche entreprise":"Nouvelle entreprise";
+  $("#dr-title").textContent=S.draft.company||"Sans nom";
+  $("#dr-del-zone").hidden=!id;
+  buildDrawer();$("#scrim").hidden=false;$("#drawer").hidden=false;$("#dr-body").scrollTop=0;
+  setTimeout(()=>$("#p-company")?.focus(),30);
+}
+function closeDrawer(){$("#drawer").hidden=true;$("#scrim").hidden=true;S.open=null;S.draft=null}
+$("#dr-close").addEventListener("click",closeDrawer);$("#dr-cancel").addEventListener("click",closeDrawer);$("#scrim").addEventListener("click",closeDrawer);
+
+function fld(id,label,val,type="text",hint="",attrs=""){return`<label class="f">${esc(label)}${hint?`<span class="h">${esc(hint)}</span>`:""}<input type="${type}" id="${id}" value="${esc(val)}" ${attrs}></label>`}
+function sel(id,label,opts,val){return`<label class="f">${esc(label)}<select id="${id}">${opts.map(o=>`<option${o===val?" selected":""}>${esc(o)}</option>`).join("")}</select></label>`}
+function area(id,label,val,hint=""){return`<label class="f">${esc(label)}${hint?`<span class="h">${esc(hint)}</span>`:""}<textarea id="${id}">${esc(val)}</textarea></label>`}
+
+function buildDrawer(){
+  const p=S.draft;
+  const crit=CRIT.map(k=>{const c=p.crit?.[k.k]||{v:0,b:"h"};
+    if(k.auto)return`<div class="crit"><div><b class="small">${esc(k.label)}</b><div class="w">poids ${k.w} · <span id="sig-lv">${esc(k.lv[signalLevel(p)])}</span></div></div><div class="small muted">Calculé depuis la date et la source du signal</div><div id="sig-basis"></div></div>`;
+    return`<div class="crit"><div><b class="small">${esc(k.label)}</b><div class="w">poids ${k.w}</div></div>
+      <select data-crit="${k.k}" aria-label="${esc(k.label)}">${k.lv.map((l,i)=>`<option value="${i}"${Number(c.v)===i?" selected":""}>${i} — ${esc(l)}</option>`).join("")}</select>
+      <select data-basis="${k.k}" aria-label="Nature de l’information"><option value="h"${c.b!=="f"?" selected":""}>Hypothèse</option><option value="f"${c.b==="f"?" selected":""}>Fait vérifié</option></select></div>`}).join("");
+  $("#dr-body").innerHTML=`
+  <div class="panel">
+    <h3>Entreprise</h3>
+    <div class="fgrid">
+      ${fld("p-company","Nom de l’entreprise *",p.company,"text","","required")}
+      ${fld("p-website","Site web",p.website,"url","https://…")}
+      ${fld("p-sector","Secteur",p.sector)}
+      ${sel("p-size","Taille estimée",SIZES,p.size)}
+      ${sel("p-kind","Type",KINDS,p.kind)}
+      ${fld("p-roles","Postes commerciaux recherchés",p.roles,"text","Tels que lus dans l’offre")}
+      ${fld("p-source","Source *",p.source,"text","URL de l’offre, page carrière, article…","required")}
+      ${fld("p-verifiedAt","Date de vérification *",p.verifiedAt,"date","","required")}
+    </div>
+    <div id="dup-warn"></div>
+  </div>
+  ${abmPanels(p)}
+  <div class="panel">
+    <h3>Décideur et coordonnées</h3>
+    <p class="small muted">Seulement des coordonnées professionnelles trouvées légalement. Notez d’où elles viennent.</p>
+    <div class="fgrid">
+      ${fld("p-decisionName","Nom",p.decisionName)}
+      ${fld("p-decisionTitle","Fonction",p.decisionTitle,"text","CEO, Head of Sales, Talent Acquisition…")}
+      ${fld("p-email","E-mail professionnel",p.email,"email")}
+      ${fld("p-linkedin","Profil LinkedIn",p.linkedin,"url")}
+      ${fld("p-phone","Téléphone professionnel",p.phone)}
+      ${fld("p-contactSource","Source des coordonnées",p.contactSource,"text","Site de l’entreprise, signature, LinkedIn…")}
+    </div>
+    <label class="check"><input type="checkbox" id="p-decisionVerified"${p.decisionVerified?" checked":""}> Nom et fonction vérifiés sur une source publique récente</label>
+    <label class="check"><input type="checkbox" id="p-optOut"${p.optOut?" checked":""}> Ne plus contacter (opposition exprimée)</label>
+  </div>
+  <div class="panel">
+    <h3>Signal d’achat et besoin</h3>
+    <div class="fgrid">
+      ${area("p-signal","Signal observé",p.signal,"Fait constaté, ex. « offre SDR publiée »")}
+      ${area("p-need","Hypothèse de besoin",p.need,"Ce que vous supposez : restera formulé comme une question")}
+      ${fld("p-signalSource","Source du signal",p.signalSource,"url")}
+      ${fld("p-signalDate","Date du signal",p.signalDate,"date")}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-h"><h3>Qualification</h3><span class="tag fact">Fait vérifié</span></div>
+    <div class="score-big"><span class="n" id="sc-total">0</span><div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:4px"><div class="meter"><i id="sc-bar" style="width:0"></i></div><span class="small muted" id="sc-detail"></span></div><span class="prio" id="sc-prio">C</span></div>
+    <div>${crit}</div>
+  </div>
+  <div class="panel">
+    <h3>Suivi</h3>
+    <div class="fgrid">
+      ${sel("p-stage","Étape",STAGES,p.stage)}
+      ${fld("p-nextAction","Prochaine action",p.nextAction)}
+      ${fld("p-nextDate","Date",p.nextDate,"date")}
+    </div>
+    <div id="stripe-zone" class="fgrid" ${p.stage==="Client payant"||p.stage==="Abonnement commencé"?"":"hidden"}>
+      ${fld("p-stripeSubId","ID d’abonnement Stripe",p.stripeSubId,"text","Commence par sub_")}
+      <label class="check" style="align-self:end"><input type="checkbox" id="p-stripeVerified"${p.stripeVerified?" checked":""}> Statut « active » et première facture payée, vus dans Stripe</label>
+    </div>
+    ${area("p-notes","Notes",p.notes)}
+  </div>
+  ${S.isNew?"":`
+  <div class="panel">
+    <div class="panel-h"><h3>Messages</h3><span class="small muted">rien n’est envoyé depuis cet outil</span></div>
+    <div class="row"><button class="btn primary sm" id="gen-ai" ${S.sample?"":"hidden"}>Rédiger avec Claude</button><button class="btn sm" id="gen-tpl">Utiliser les modèles</button><span class="small muted" id="gen-status"></span></div>
+    <div class="msg-out" id="drafts"></div>
+  </div>
+  <div class="panel">
+    <h3>Journal des interactions</h3>
+    <div class="row">${Object.entries(EVT).map(([k,v])=>`<button class="btn sm" data-log="${k}">${esc(v)}</button>`).join("")}</div>
+    <input type="text" id="log-note" placeholder="Détail (facultatif) : objet, réponse reçue, prochaine étape…">
+    ${logExtrasHtml(p)}
+    <div class="hist" id="hist"></div>
+  </div>`}
+  <div id="del-confirm"></div>`;
+  updateScore();renderDrafts();renderHist();
+  $("#dr-body").oninput=e=>{if(e.target.matches("[data-crit],[data-basis],#p-signal,#p-signalSource,#p-signalDate"))updateScore();if(e.target.id==="p-company"||e.target.id==="p-website")dupCheck();if(e.target.id==="p-company")$("#dr-title").textContent=e.target.value||"Sans nom"};
+  $("#dr-body").onchange=e=>{if(e.target.id==="p-segment")toggleAbm();if(e.target.id==="p-stage"){$("#stripe-zone").hidden=!["Client payant","Abonnement commencé"].includes(e.target.value)}if(e.target.matches("[data-crit],[data-basis]"))updateScore()};
+  $("#gen-ai")&&($("#gen-ai").onclick=genAI);
+  $("#gen-tpl")&&($("#gen-tpl").onclick=()=>{S.draft.drafts=templates(readForm());renderDrafts();saveDrafts()});
+  $$("[data-log]").forEach(b=>b.onclick=()=>logEvent(b.dataset.log));
+  bindAbm();dupCheck();
+}
+function readForm(){
+  const g=id=>$("#"+id);const v=id=>g(id)?g(id).value.trim():"";
+  const p=Object.assign({},S.draft,{
+    company:v("p-company"),website:v("p-website"),sector:v("p-sector"),size:v("p-size"),kind:v("p-kind"),roles:v("p-roles"),source:v("p-source"),verifiedAt:v("p-verifiedAt"),
+    decisionName:v("p-decisionName"),decisionTitle:v("p-decisionTitle"),email:v("p-email"),linkedin:v("p-linkedin"),phone:v("p-phone"),contactSource:v("p-contactSource"),
+    decisionVerified:g("p-decisionVerified").checked,optOut:g("p-optOut").checked,
+    signal:v("p-signal"),need:v("p-need"),signalSource:v("p-signalSource"),signalDate:v("p-signalDate"),
+    stage:v("p-stage"),nextAction:v("p-nextAction"),nextDate:v("p-nextDate"),stripeSubId:v("p-stripeSubId"),stripeVerified:!!g("p-stripeVerified")?.checked,notes:v("p-notes")});
+  Object.assign(p,readAbm());
+  p.crit={};$$("[data-crit]").forEach(s=>{p.crit[s.dataset.crit]={v:Number(s.value),b:$(`[data-basis="${s.dataset.crit}"]`).value}});
+  return p;
+}
+function updateScore(){
+  const p=readForm();const s=scoreOf(p);
+  $("#sc-total").textContent=s.total;$("#sc-bar").style.width=s.total+"%";
+  $("#sc-prio").textContent="Priorité "+s.prio;$("#sc-prio").className="prio "+s.prio;
+  $("#sc-detail").textContent=`${s.fact} points reposent sur des faits vérifiés, ${s.total-s.fact} sur des hypothèses.`;
+  const lv=signalLevel(p);$("#sig-lv").textContent=CRIT[4].lv[lv];
+  $("#sig-basis").innerHTML=p.signalSource?'<span class="tag fact">Fait vérifié</span>':'<span class="tag hyp">Aucune source</span>';
+}
+function findDup(p){
+  const d=domainOf(p.website),n=normName(p.company);
+  return S.prospects.find(x=>x.id!==S.open&&((d&&domainOf(x.website)===d)||(n&&normName(x.company)===n)));
+}
+function dupCheck(){const d=findDup(readForm());$("#dup-warn").innerHTML=d?`<div class="notice"><b>Doublon probable :</b> ${esc(d.company)} existe déjà (${esc(d.stage)}). <button class="btn sm" data-open="${esc(d.id)}">Ouvrir la fiche existante</button></div>`:""}
+
+$("#dr-save").addEventListener("click",async()=>{
+  if(!S.db){toast("Base indisponible dans cet affichage");return}
+  const p=readForm();
+  if(!p.company){toast("Le nom de l’entreprise est obligatoire");$("#p-company").focus();return}
+  if(!p.source){toast("La source est obligatoire : d’où vient cette entreprise ?");$("#p-source").focus();return}
+  if(findDup(p)){toast("Doublon : ouvrez la fiche existante");return}
+  if((p.email||p.phone||p.linkedin)&&!p.contactSource){toast("Indiquez la source des coordonnées");$("#p-contactSource").focus();return}
+  if(p.stage==="Client payant"&&!(p.stripeVerified&&/^sub_[A-Za-z0-9]+$/.test(p.stripeSubId))){toast("Client payant : ID Stripe sub_… et vérification obligatoires");$("#p-stripeSubId")?.focus();return}
+  if(p.stage==="Prospect qualifié"&&scoreOf(p).total===0){toast("Notez au moins un critère avant de qualifier");return}
+  const now=new Date().toISOString();
+  const s=scoreOf(p);
+  const body={...p,score:s.total,prio:s.prio,updatedAt:now};delete body.id;
+  if(S.isNew){body.createdAt=now;body.history=[{at:now,d:today(),t:"note",note:"Fiche créée — source : "+p.source}]}
+  const ref=S.isNew?S.db.collection("prospects").doc():S.db.doc("prospects/"+S.open);
+  await writeDoc(ref.path,()=>ref.set(body));
+  toast(S.isNew?"Entreprise ajoutée":"Fiche enregistrée");
+  if(S.isNew){S.isNew=false;S.open=ref.id;S.draft={...body,id:ref.id};buildDrawer();$("#dr-del-zone").hidden=false;$("#dr-eyebrow").textContent="Fiche entreprise"}
+});
+$("#dr-del").addEventListener("click",()=>{
+  $("#del-confirm").innerHTML=`<div class="confirm">Supprimer définitivement ${esc(S.draft.company)} et son historique ?<button class="btn danger sm" id="del-yes">Supprimer</button><button class="btn sm" id="del-no">Garder</button></div>`;
+  $("#del-confirm").scrollIntoView({block:"nearest"});
+  $("#del-no").onclick=()=>$("#del-confirm").innerHTML="";
+  $("#del-yes").onclick=async()=>{const ref=S.db.doc("prospects/"+S.open);await writeDoc(ref.path,()=>ref.delete());toast("Supprimée");closeDrawer()};
+});
+
+function renderHist(){
+  const el=$("#hist");if(!el)return;
+  const h=[...(S.draft.history||[])].reverse();
+  el.innerHTML=h.length?h.map(x=>`<div><span class="mono small muted">${frDate(x.d)}</span><span><b>${esc(EVT[x.t]||x.t)}</b>${x.obj?" : « "+esc(x.obj)+" »":""}${x.note?" — "+esc(x.note):""}</span></div>`).join(""):'<p class="small muted">Aucune interaction journalisée.</p>';
+}
+async function logEvent(t){
+  if(!S.db||!S.open)return;
+  const cur=S.prospects.find(x=>x.id===S.open)||S.draft;
+  if(CONTACT_TYPES.includes(t)&&cur.optOut){toast("Cette entreprise a demandé à ne plus être contactée");return}
+  const extra=logExtra(t);if(extra===false)return;
+  const note=$("#log-note").value.trim();const now=new Date().toISOString();
+  const history=[...(cur.history||[]),{at:now,d:today(),t,note,...extra}];
+  const patch={history,updatedAt:now};
+  const target=EVT_STAGE[t];const ci=STAGES.indexOf(cur.stage);
+  if(target!=null&&(ci<target||ci===13))patch.stage=STAGES[target];
+  if(CONTACT_TYPES.includes(t)){
+    const n=history.filter(h=>CONTACT_TYPES.includes(h.t)).length;const f=FOLLOWUP[Math.min(n,4)];
+    if(f){patch.nextAction=f.a;patch.nextDate=addDays(today(),f.d)}
+    if(n>=4&&!history.some(h=>h.t==="reponse")){patch.stage="À recontacter"}
+  }
+  if(t==="reponse"){patch.nextAction="Répondre et proposer une démo";patch.nextDate=today()}
+  if(t==="rdv"){patch.nextAction="Préparer la démo"}
+  if(t==="demo"){patch.nextAction="Envoyer la proposition";patch.nextDate=addDays(today(),1)}
+  if(t==="offre"){patch.nextAction="Relancer la proposition";patch.nextDate=addDays(today(),3)}
+  applyCampaign(cur,history,patch,t);
+  const ref=S.db.doc("prospects/"+S.open);
+  await writeDoc(ref.path,()=>ref.update(patch));
+  Object.assign(S.draft,patch);$("#log-note").value="";if($("#log-obj"))$("#log-obj").value="";renderHist();
+  if(patch.stage){$("#p-stage").value=patch.stage;$("#stripe-zone").hidden=!["Client payant","Abonnement commencé"].includes(patch.stage)}
+  if(patch.nextAction!=null){$("#p-nextAction").value=patch.nextAction}
+  if(patch.nextDate){$("#p-nextDate").value=patch.nextDate}
+  toast(EVT[t]+" — journalisé");
+}
+
+/* ---------- Messages ---------- */
+const DRAFT_FIELDS=[["accroche","Accroche"],["email_objet","Objet de l’e-mail"],["email","E-mail de prise de contact"],["linkedin","Message LinkedIn"],["script_appel","Script d’appel"],["questions_decouverte","Questions de découverte"],["objections","Objections probables et réponses"],["proposition_demo","Proposition de démonstration"],["plan_relance","Plan de relance"]];
+function draftText(k,v){
+  if(v==null)return"";
+  if(k==="objections"&&Array.isArray(v))return v.map(o=>`« ${o.objection} »\n→ ${o.reponse}`).join("\n\n");
+  if(k==="plan_relance"&&Array.isArray(v))return v.map(o=>`${o.jour} · ${o.canal} : ${o.message}`).join("\n\n");
+  if(Array.isArray(v))return v.map(x=>"• "+x).join("\n");
+  return String(v);
+}
+function renderDrafts(){
+  const el=$("#drafts");if(!el)return;const d=S.draft.drafts;
+  if(!d){el.innerHTML='<p class="small muted">Aucun brouillon. Les messages utilisent uniquement les informations de la fiche et les faits produit confirmés dans Réglages.</p>';return}
+  el.innerHTML=`<p class="small muted">Brouillons ${d.by==="claude"?"rédigés par Claude":"issus des modèles"} le ${frDate(d.generatedAt)}. À relire et corriger avant tout envoi.</p>`+DRAFT_FIELDS.map(([k,l])=>`<div class="blk"><div class="row"><b class="small">${esc(l)}</b><button class="btn sm ghost" data-copy="${k}">Copier</button></div><textarea data-draft="${k}" rows="${k==="email_objet"||k==="accroche"?2:6}">${esc(draftText(k,d[k]))}</textarea></div>`).join("")+`<div class="row"><button class="btn sm" id="save-drafts">Enregistrer les modifications</button>${d.validated?`<span class="tag fact">Validés le ${frDate(d.validatedAt)}</span>`:'<button class="btn sm primary" id="validate-drafts">Valider ces messages</button>'}</div>`;
+  el.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>copy(el.querySelector(`[data-draft="${b.dataset.copy}"]`).value));
+  $("#save-drafts").onclick=()=>{const d2={...S.draft.drafts,validated:false,validatedAt:null};el.querySelectorAll("[data-draft]").forEach(t=>d2[t.dataset.draft]=t.value);S.draft.drafts=d2;saveDrafts(true);renderDrafts()};
+  const vb=$("#validate-drafts");if(vb)vb.onclick=async()=>{const d2={...S.draft.drafts,validated:true,validatedAt:today()};el.querySelectorAll("[data-draft]").forEach(t=>d2[t.dataset.draft]=t.value);S.draft.drafts=d2;await saveDrafts();toast("Messages validés");renderDrafts()};
+}
+async function saveDrafts(notify){if(!S.db||!S.open)return;const ref=S.db.doc("prospects/"+S.open);await writeDoc(ref.path,()=>ref.update({drafts:S.draft.drafts}));if(notify)toast("Brouillons enregistrés")}
+function confirmedFacts(){return(S.product?.facts||[]).filter(f=>f.status==="Confirmé").map(f=>f.text)}
+function templates(p){
+  const sender=S.product?.sender||"",sig=S.product?.signature||"";
+  const who=p.decisionName?p.decisionName.split(" ")[0]:"";
+  const hello=who?`Bonjour ${who},`:"Bonjour,";
+  const roles=p.roles||"des profils commerciaux";
+  const sig2=[sender,sig,"SwipSales — swipsales.fr"].filter(Boolean).join("\n");
+  const sigLine=p.roles?`J’ai vu que ${p.company} recrute en ce moment : ${p.roles}.`:p.signal?`J’ai remarqué ceci chez ${p.company} : ${p.signal.replace(/\.$/,"")}.`:`Je crois comprendre que ${p.company} recrute des profils commerciaux.`;
+  return{by:"modele",generatedAt:today(),
+    accroche:sigLine,
+    email_objet:`${p.company} — recrutement ${p.roles?p.roles.split(",")[0].trim():"commercial"}`,
+    email:`${hello}\n\n${sigLine}\n\nQuand vous recrutez ${roles}, qu’est-ce qui vous prend le plus de temps aujourd’hui : trouver des candidats, ou trier ceux qui conviennent vraiment ?\n\nJe développe SwipSales, une plateforme dédiée au recrutement de profils commerciaux. Si le sujet est d’actualité, je peux vous montrer en 15 minutes comment elle fonctionne.\n\nSi ce n’est pas le sujet, dites-le-moi et je ne vous relancerai pas.\n\n${sig2}`,
+    linkedin:`${hello} ${sigLine} Je travaille sur SwipSales, une plateforme dédiée au recrutement commercial. Ouvert(e) à un échange de 15 min ?`,
+    script_appel:`1. Présentation (10 s) : « ${sender||"[Prénom]"}, de SwipSales. Je vous appelle au sujet de votre recrutement ${roles}. Vous avez deux minutes ? »\n2. Raison de l’appel : ${sigLine}\n3. Question : « Comment vous trouvez vos commerciaux aujourd’hui ? Qu’est-ce qui coince ? »\n4. Écouter, reformuler.\n5. Si besoin confirmé : proposer une démo de 15 minutes avec deux créneaux.\n6. Sinon : « Je peux vous recontacter quand vous rouvrez un poste ? »`,
+    questions_decouverte:["Combien de commerciaux avez-vous recrutés sur les 12 derniers mois ?","Par quels canaux passent vos recrutements aujourd’hui ?","Qu’est-ce qui vous fait dire qu’un commercial ne fera pas l’affaire, et à quel moment le découvrez-vous ?","Qui décide du choix d’un outil de recrutement chez vous ?","Quel budget est consacré au recrutement commercial ?"],
+    objections:[{objection:"On a déjà LinkedIn / Indeed.",reponse:"Ça fonctionne pour vous ? Je ne cherche pas à les remplacer. La question est de savoir si une plateforme dédiée aux profils commerciaux apporte quelque chose de plus. La démo sert à en juger."},{objection:"On passe par un cabinet.",reponse:"Compris. C’est un modèle différent : abonnement contre honoraires par recrutement. Ça vaut le coup de comparer sur vos volumes."},{objection:"Envoyez-moi une présentation.",reponse:"Avec plaisir. Pour vous envoyer le bon contenu : vous recrutez quels profils en ce moment ?"},{objection:"Ça coûte combien ?",reponse:S.product?.facts?.some(f=>f.status==="Confirmé"&&/€/.test(f.text))?"Les tarifs sont publics sur swipsales.fr ; le bon plan dépend du nombre d’offres que vous publiez.":"Le bon plan dépend du nombre d’offres que vous publiez ; je vous donne le tarif exact après avoir vu votre besoin."},{objection:"Vous êtes nouveaux.",reponse:"Oui, c’est vrai. C’est pour ça que je préfère vous montrer le produit plutôt que de vous promettre des résultats."}],
+    proposition_demo:`Je vous propose 15 minutes en visio pour vous montrer SwipSales sur votre cas (${roles}). Vous êtes disponible mardi ou jeudi en fin de matinée ?`,
+    plan_relance:[{jour:"J+3",canal:"LinkedIn",message:"Message court qui rappelle l’e-mail, sans le copier."},{jour:"J+7",canal:"E-mail",message:"Une seule question : « Le recrutement "+(p.roles||"commercial")+" est-il toujours d’actualité ? »"},{jour:"J+14",canal:"E-mail",message:"Dernier message : vous clôturez et proposez de revenir vers eux quand un poste s’ouvre."}]};
+}
+async function genAI(){
+  const p=readForm();const st=$("#gen-status");const facts=confirmedFacts();
+  if(p.optOut){toast("Ne plus contacter : génération désactivée");return}
+  if(!facts.length){st.textContent="Confirmez au moins un fait produit dans Réglages : sans cela, Claude ne décrit pas le produit.";}
+  const btn=$("#gen-ai");btn.disabled=true;st.textContent="Rédaction en cours…";
+  const lines=[];const add=(l,v,kind)=>{if(v)lines.push(`- ${l} [${kind}] : ${v}`)};
+  add("Entreprise",p.company,"FAIT");add("Site",p.website,"FAIT");add("Secteur",p.sector,"FAIT");add("Taille estimée",p.size!=="Inconnue"?p.size:"","ESTIMATION");
+  add("Postes commerciaux recherchés",p.roles,"FAIT, source : "+p.source);add("Décideur",p.decisionName&&p.decisionVerified?`${p.decisionName}, ${p.decisionTitle}`:"",p.decisionVerified?"FAIT":"HYPOTHÈSE");
+  add("Signal d’achat",p.signal,p.signalSource?"FAIT, daté du "+(p.signalDate||"?"):"HYPOTHÈSE");add("Besoin supposé",p.need,"HYPOTHÈSE");
+  const prompt=`Tu prépares des brouillons de prospection B2B en français pour SwipSales, plateforme de recrutement de profils commerciaux. Un humain relira et enverra lui-même.
+
+RÈGLES ABSOLUES
+- Utilise uniquement les informations ci-dessous. N'invente aucun chiffre, client, témoignage, résultat, statistique, offre d'emploi, coordonnée ni fonctionnalité.
+- N'affirme jamais que SwipSales permet de recruter plus vite, moins cher ou mieux.
+- Les éléments marqués HYPOTHÈSE ou ESTIMATION se formulent comme des questions, jamais comme des faits.
+- Ne cite un prix que s'il figure dans les faits produit confirmés.
+- Vouvoiement, ton direct et humain, phrases courtes, pas de jargon, pas d'emoji, pas de formule creuse.
+- E-mail : 120 mots maximum, une seule question, un appel à l'action simple ; il se termine par une phrase qui permet de refuser les relances. Signature : ${[S.product?.sender,S.product?.signature].filter(Boolean).join(", ")||"[Prénom Nom]"}.
+- LinkedIn : 300 caractères maximum.
+- Le message vend une solution à un problème de recrutement commercial, pas « une nouvelle plateforme ».
+
+FAITS PRODUIT CONFIRMÉS
+${facts.length?facts.map(f=>"- "+f).join("\n"):"- Aucun fait confirmé : décris seulement SwipSales comme une plateforme dédiée au recrutement commercial, sans autre détail."}
+
+PROSPECT
+${lines.join("\n")||"- (peu d'informations)"}
+
+Réponds uniquement avec un objet JSON de cette forme :
+{"accroche":"","email_objet":"","email":"","linkedin":"","script_appel":"","questions_decouverte":["",""],"objections":[{"objection":"","reponse":""}],"proposition_demo":"","plan_relance":[{"jour":"J+3","canal":"","message":""}]}`;
+  try{
+    const out=await S.sample.json(prompt,{cache:false});
+    if(!out||typeof out!=="object"||!out.email)throw{code:"invalid_json"};
+    S.draft.drafts={...out,by:"claude",generatedAt:today()};renderDrafts();await saveDrafts();st.textContent="Brouillons prêts. Relisez avant d’envoyer.";
+  }catch(e){
+    const m={not_granted:"Claude n’est pas autorisé pour cette page.",sampling_disabled:"Claude n’est pas disponible pour ce compte.",rate_limited:"Trop de demandes : réessayez dans un moment.",invalid_json:"Réponse illisible : réessayez.",refused:"Demande refusée : simplifiez la fiche.",cancelled:""};
+    st.textContent=(m[e?.code]??"Échec de la rédaction. Les modèles restent disponibles.");
+    if(["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(e?.code))btn.hidden=true;
+  }finally{btn.disabled=false}
+}
+
+/* ---------- Mesures ---------- */
+const DEFS=[
+ ["Entreprises qualifiées","Nombre d’entreprises dont l’étape actuelle est « Prospect qualifié » ou plus loin, hors « Client perdu »","CRM"],
+ ["Contacts réalisés","Nombre d’interactions « E-mail envoyé », « Message LinkedIn envoyé » ou « Appel passé » journalisées sur la période","CRM"],
+ ["Taux de réponse","Entreprises ayant répondu ÷ entreprises contactées, sur la même période","CRM"],
+ ["Rendez-vous, démos, offres","Nombre d’interactions de ce type journalisées sur la période","CRM"],
+ ["Clients payants vérifiés","Fiches à l’étape « Client payant » avec un ID sub_… et la case de vérification Stripe cochée","CRM + Stripe"],
+ ["MRR","Somme des montants mensuels HT des abonnements Stripe au statut active (annuel ÷ 12), hors remises ponctuelles, au dernier jour du mois","Stripe"],
+ ["Abonnements payants actifs","Abonnements Stripe au statut active avec au moins une facture payée","Stripe"],
+ ["Revenu moyen par compte (ARPA)","MRR ÷ abonnements payants actifs","Stripe"],
+ ["Churn logo mensuel","Abonnements résiliés dans le mois ÷ abonnements actifs au début du mois","Stripe"],
+ ["Churn MRR","MRR perdu (résiliations + baisses de plan) ÷ MRR au début du mois","Stripe"],
+ ["Conversion visiteur → inscription","(Inscriptions recruteurs + candidats) ÷ visiteurs uniques du mois","Analytics + Supabase"],
+ ["Conversion inscription → paiement","Nouveaux abonnés payants du mois ÷ inscriptions recruteurs du mois (approximation sans cohortes)","Stripe + Supabase"],
+ ["Taux de complétion des profils","Profils candidats complétés ÷ inscriptions candidats du mois","Supabase"],
+ ["CAC","Dépenses d’acquisition saisies sur le mois ÷ nouveaux abonnés payants du mois","Dépenses + Stripe"],
+ ["Délai de récupération du CAC","CAC ÷ (ARPA × marge brute), en mois","Calculé"],
+];
+function renderMetrics(){renderPerf();
+  const from=periodStart();const st=crmStats(from);
+  $("#crm-kpis").innerHTML=
+    kpi("Entreprises qualifiées",st.qualified,"étape ≥ Prospect qualifié, hors perdus","CRM, état actuel")+
+    kpi("Contacts réalisés",st.contacts,`${st.cos} entreprises`,`CRM, depuis le ${frDate(from)}`)+
+    kpi("Réponses",st.replies,"",`CRM, depuis le ${frDate(from)}`)+
+    (st.cos?kpi("Taux de réponse",pct(st.repliedCos/st.cos),"entreprises ayant répondu ÷ contactées",`CRM, depuis le ${frDate(from)}`):kpi("Taux de réponse","","entreprises ayant répondu ÷ contactées","CRM","Aucun contact sur la période"))+
+    kpi("Rendez-vous",st.rdv,"",`CRM, depuis le ${frDate(from)}`)+
+    kpi("Démonstrations",st.demo,"",`CRM, depuis le ${frDate(from)}`)+
+    kpi("Offres présentées",st.offre,"",`CRM, depuis le ${frDate(from)}`)+
+    kpi("Clients payants vérifiés",st.paid,"ID Stripe + vérification","CRM, état actuel");
+  const counts=STAGES.map(s=>S.prospects.filter(p=>p.stage===s).length);const max=Math.max(1,...counts);
+  $("#stage-bars").innerHTML=S.prospects.length?STAGES.map((s,i)=>`<div class="bar"><span>${esc(s)}</span><div class="trk"><div class="fill" style="width:${counts[i]/max*100}%"></div></div><span class="n">${counts[i]}</span></div>`).join(""):'<p class="small muted">Aucune entreprise dans le pipeline.</p>';
+  // relevés
+  const snaps=[...S.metrics].sort((a,b)=>(b.period||"").localeCompare(a.period||""));
+  const ss=$("#snap-select");
+  ss.innerHTML=snaps.length?snaps.map(m=>`<option value="${esc(m.id)}"${S.snap===m.id?" selected":""}>${esc(m.period)}</option>`).join(""):"<option>Aucun relevé</option>";ss.disabled=!snaps.length;
+  const snap=snaps.find(m=>m.id===S.snap)||snaps[0]||null;
+  renderRevenue(snap);
+  $("#spend-list").innerHTML=S.spend.length?[...S.spend].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20).map(x=>`<div class="item" style="cursor:default"><div class="t">${eur(x.amount)} · ${esc(x.channel)}</div><div class="r"><span class="mono small muted">${frDate(x.date)}</span><button class="btn sm ghost" data-delspend="${esc(x.id)}" aria-label="Supprimer">Retirer</button></div>${x.note?`<div class="s">${esc(x.note)}</div>`:""}</div>`).join(""):'<p class="small muted">Aucune dépense saisie.</p>';
+  $("#defs").innerHTML="<tr><th>Indicateur</th><th>Formule</th><th>Source</th></tr>"+DEFS.map(d=>`<tr><td><b>${esc(d[0])}</b></td><td>${esc(d[1])}</td><td>${esc(d[2])}</td></tr>`).join("");
+}
+function renderRevenue(snap){
+  if(!snap){
+    $("#snap-meta").innerHTML="";
+    $("#rev-kpis").innerHTML=["MRR","Abonnements payants actifs","ARPA","Churn logo","Churn MRR","Conversion visiteur → inscription","Conversion inscription → paiement","Complétion des profils","CAC","Récupération du CAC"].map(l=>kpi(l,"","",l.startsWith("CAC")||l.startsWith("Récup")?"Dépenses + Stripe":"Stripe / Supabase / analytics","Non mesuré : à connecter")).join("");
+    return;
+  }
+  const v=snap.values||{};const month=snap.period;
+  const spend=S.spend.filter(x=>(x.date||"").startsWith(month));const spendTotal=spend.reduce((a,x)=>a+Number(x.amount||0),0);
+  const div=(a,b)=>a==null||b==null||b===0?null:a/b;
+  const arpa=div(v.mrr,v.activeSubs);
+  const cac=spend.length&&v.newSubs?spendTotal/v.newSubs:null;
+  const payback=cac!=null&&arpa&&v.grossMargin?cac/(arpa*v.grossMargin/100):null;
+  const src=`Relevé ${month} · ${snap.source}`;
+  const miss=t=>"Donnée manquante : "+t;
+  $("#snap-meta").textContent=`Saisi le ${frDate(snap.recordedAt)} par ${snap.method||"saisie manuelle"}. Source : ${snap.source}.`;
+  $("#rev-kpis").innerHTML=
+    (v.mrr!=null?kpi("MRR",eur(v.mrr),"abonnements actifs, mensualisés, HT",src):kpi("MRR","","","Stripe",miss("MRR")))+
+    (v.activeSubs!=null?kpi("Abonnements payants actifs",v.activeSubs,"statut active + facture payée",src):kpi("Abonnements payants actifs","","","Stripe",miss("abonnements actifs")))+
+    (arpa!=null?kpi("ARPA",eur(arpa),"MRR ÷ abonnements actifs",src):kpi("ARPA","","MRR ÷ abonnements actifs","Calculé",miss("MRR ou actifs")))+
+    (div(v.cancelledSubs,v.activeSubsStart)!=null?kpi("Churn logo",pct(div(v.cancelledSubs,v.activeSubsStart)),"résiliés ÷ actifs début de mois",src):kpi("Churn logo","","résiliés ÷ actifs début de mois","Stripe",miss("résiliés ou actifs au début")))+
+    (div(v.mrrLost,v.mrrStart)!=null?kpi("Churn MRR",pct(div(v.mrrLost,v.mrrStart)),"MRR perdu ÷ MRR début de mois",src):kpi("Churn MRR","","MRR perdu ÷ MRR début de mois","Stripe",miss("MRR perdu ou MRR au début")))+
+    (v.visitors&&(v.recruiterSignups!=null||v.candidateSignups!=null)?kpi("Visiteur → inscription",pct(((v.recruiterSignups||0)+(v.candidateSignups||0))/v.visitors),"inscriptions ÷ visiteurs uniques",src):kpi("Visiteur → inscription","","inscriptions ÷ visiteurs","Analytics + Supabase",miss("visiteurs ou inscriptions")))+
+    (div(v.newSubs,v.recruiterSignups)!=null?kpi("Inscription → paiement",pct(div(v.newSubs,v.recruiterSignups)),"nouveaux payants ÷ inscriptions recruteurs",src):kpi("Inscription → paiement","","nouveaux payants ÷ inscriptions recruteurs","Stripe + Supabase",miss("nouveaux abonnés ou inscriptions")))+
+    (div(v.candidateCompleted,v.candidateSignups)!=null?kpi("Complétion des profils",pct(div(v.candidateCompleted,v.candidateSignups)),"profils complétés ÷ inscriptions candidats",src):kpi("Complétion des profils","","","Supabase",miss("profils candidats")))+
+    (cac!=null?kpi("CAC",eur(cac),`${eur(spendTotal)} ÷ ${v.newSubs} nouveaux payants`,`Dépenses ${month} + relevé`):kpi("CAC","","dépenses ÷ nouveaux payants","Dépenses + Stripe",!spend.length?"Non calculable : aucune dépense saisie pour ce mois":"Non calculable : nouveaux abonnés inconnus ou nuls"))+
+    (payback!=null?kpi("Récupération du CAC",(Math.round(payback*10)/10).toLocaleString("fr-FR")+" mois","CAC ÷ (ARPA × marge brute)","Calculé"):kpi("Récupération du CAC","","CAC ÷ (ARPA × marge brute)","Calculé","Non calculable : CAC, ARPA ou marge brute manquant"));
+}
+$("#period-chips").addEventListener("click",e=>{const b=e.target.closest("[data-p]");if(!b)return;S.period=b.dataset.p;$$("#period-chips .chip").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));renderMetrics()});
+$("#snap-select").addEventListener("change",e=>{S.snap=e.target.value;renderMetrics()});
+$("#snap-form").addEventListener("submit",async e=>{
+  e.preventDefault();if(!S.db)return toast("Base indisponible");
+  const period=$("#s-period").value,source=$("#s-source").value.trim();if(!period||!source)return toast("Mois et source obligatoires");
+  const keys=["mrr","mrrStart","mrrLost","activeSubs","activeSubsStart","newSubs","cancelledSubs","visitors","recruiterSignups","candidateSignups","candidateCompleted","grossMargin"];
+  const values={};keys.forEach(k=>values[k]=num($("#s-"+k).value));
+  const ref=S.db.doc("metrics/m-"+period);
+  await writeDoc(ref.path,()=>ref.set({period,source,method:"saisie manuelle",recordedAt:today(),values}));
+  S.snap="m-"+period;toast("Relevé enregistré");e.target.reset();
+});
+$("#spend-form").addEventListener("submit",async e=>{
+  e.preventDefault();if(!S.db)return toast("Base indisponible");
+  const body={date:$("#sp-date").value,channel:$("#sp-channel").value,amount:Number($("#sp-amount").value),note:$("#sp-note").value.trim(),createdAt:new Date().toISOString()};
+  if(!body.date||!(body.amount>=0))return toast("Date et montant obligatoires");
+  const ref=S.db.collection("spend").doc();await writeDoc(ref.path,()=>ref.set(body));toast("Dépense ajoutée");e.target.reset();
+});
+$("#spend-list").addEventListener("click",async e=>{const b=e.target.closest("[data-delspend]");if(!b)return;const ref=S.db.doc("spend/"+b.dataset.delspend);await writeDoc(ref.path,()=>ref.delete());toast("Dépense retirée")});
+
+/* ---------- Candidats ---------- */
+const CAND_FUNNEL=[["Visite","page_view (analytics)","visitors"],["Inscription candidat","signup_completed, role=candidat","candidateSignups"],["Profil complété","profile_completed","candidateCompleted"],["Test ADN terminé","adn_test_completed",null],["Premier swipe","first_swipe",null],["Premier match ou candidature","match_created / application_sent",null],["Retour sur la plateforme (J+7)","session_start à J+7",null]];
+const CAND_PLAN=[
+ ["Écoles de commerce et formations commerciales","Proposer l’inscription des promotions sortantes et alternants via les chargés de relations entreprises.","Inscriptions par code école"],
+ ["Contenu LinkedIn pour commerciaux","Posts pédagogiques et démonstrations du test et du swipe, sans promesse d’emploi.","Clics → inscriptions"],
+ ["Communautés sales","Partager le test ADN commercial comme outil d’auto-évaluation dans les groupes et Slack sales.","Tests terminés"],
+ ["Parrainage candidat","Chaque candidat actif peut inviter un pair commercial.","Inscriptions parrainées"],
+ ["Relance profil incomplet","Scénario Brevo à J+1 et J+3 pour terminer le profil, puis à J+7 pour le test.","Taux de complétion"],
+];
+const CAND_MSG=[
+ ["Profil incomplet (J+1)","Objet : votre profil SwipSales est à moitié prêt\n\nBonjour {{ params.prenom }},\n\nIl manque quelques informations à votre profil. Tant qu’il n’est pas complet, les recruteurs ne le voient pas en entier.\n\nCompléter mon profil : {{ params.lien }}\n\nL’inscription et la mise en relation restent gratuites."],
+ ["Test non commencé (J+3)","Objet : 48 situations pour mesurer votre profil commercial\n\nBonjour {{ params.prenom }},\n\nLe test présente des situations réelles de vente. À la fin, vous voyez si votre profil penche plutôt chasseur ou éleveur.\n\nCommencer le test : {{ params.lien }}"],
+ ["Inactif depuis 14 jours","Objet : de nouvelles offres commerciales depuis votre dernière visite\n\nBonjour {{ params.prenom }},\n\nDe nouvelles offres ont été publiées depuis votre dernière connexion. Un swipe suffit pour signaler votre intérêt.\n\nVoir les offres : {{ params.lien }}"],
+];
+function renderCandidats(){
+  const snap=latestSnap();const v=snap?.values||{};
+  $("#cand-src").textContent=snap?`Dernier relevé : ${snap.period} · ${snap.source}`:"Aucun relevé : événements non connectés";
+  $("#cand-funnel").innerHTML="<tr><th>Étape</th><th>Événement à suivre</th><th>Valeur</th></tr>"+CAND_FUNNEL.map(([l,e,k])=>`<tr><td><b>${esc(l)}</b></td><td><code>${esc(e)}</code></td><td>${k&&v[k]!=null?`<span class="num">${v[k]}</span>`:'<span class="muted small">non mesuré</span>'}</td></tr>`).join("");
+  $("#cand-plan").innerHTML=CAND_PLAN.map(([t,d,m])=>`<div class="step"><div><b>${esc(t)}</b><p class="small muted">${esc(d)}</p></div><span class="tag">${esc(m)}</span></div>`).join("");
+  $("#cand-msgs").innerHTML=CAND_MSG.map(([t,b],i)=>`<div class="blk"><div class="row"><b class="small">${esc(t)}</b><button class="btn sm ghost" data-cmsg="${i}">Copier</button></div><textarea rows="7" id="cmsg-${i}">${esc(b)}</textarea></div>`).join("");
+  $$("[data-cmsg]").forEach(b=>b.onclick=()=>copy($("#cmsg-"+b.dataset.cmsg).value));
+}
+
+/* ---------- Expériences & retours ---------- */
+function renderGrowth(){
+  const ord={"En cours":0,"Validée":1,"Proposée":2,"Terminée":3};
+  const ex=[...S.experiments].sort((a,b)=>(ord[a.status]??9)-(ord[b.status]??9));
+  $("#exp-list").innerHTML=ex.length?ex.map(x=>`<div class="item" data-exp="${esc(x.id)}" tabindex="0" role="button"><div class="t">${esc(x.title)}</div><div class="r">${x.budget>0?`<span class="tag ${x.validated?"fact":"hyp"}">${eur(x.budget)}${x.validated?" validé":" à valider"}</span>`:'<span class="tag">Organique</span>'}<span class="pill ${x.status==="En cours"?"g-out":x.status==="Terminée"?"g-won":"g-early"}">${esc(x.status)}</span></div><div class="s"><span>${esc(x.hyp||"").slice(0,140)}</span>${x.decision?`<b>→ ${esc(x.decision)}</b>`:""}</div></div>`).join(""):emptyBlock("Aucune expérience","Une expérience = une hypothèse, un seuil de réussite et une décision à la fin.");
+  const fb=[...S.feedback].sort((a,b)=>(a.status==="Résolu")-(b.status==="Résolu"));
+  $("#fb-list").innerHTML=fb.length?fb.map(x=>`<div class="item" data-fb="${esc(x.id)}" tabindex="0" role="button"><div class="t">${esc(x.title)}</div><div class="r"><span class="tag">${esc(x.stage||"")}</span><span class="pill ${x.status==="Résolu"?"g-won":"g-lost"}">${esc(x.status)}</span></div><div class="s">${x.detail?`<span>${esc(x.detail).slice(0,160)}</span>`:""}${x.source?`<span>Source : ${esc(x.source)}</span>`:""}</div></div>`).join(""):emptyBlock("Aucun blocage signalé","");
+}
+function openExp(id){
+  const x=id?S.experiments.find(e=>e.id===id):{title:"",hyp:"",target:"",channel:"",budget:0,days:14,start:today(),metric:"",threshold:"",status:"Proposée",validated:false,result:"",decision:""};
+  S.editExp=id;$("#exp-form-panel").hidden=false;$("#e-del").hidden=!id;
+  [["title","e-title"],["hyp","e-hyp"],["target","e-target"],["channel","e-channel"],["budget","e-budget"],["days","e-days"],["start","e-start"],["metric","e-metric"],["threshold","e-threshold"],["status","e-status"],["result","e-result"],["decision","e-decision"]].forEach(([k,i])=>$("#"+i).value=x[k]??"");
+  $("#e-validated").checked=!!x.validated;$("#exp-form-panel").scrollIntoView({block:"nearest"});$("#e-title").focus();
+}
+$("#add-exp").onclick=()=>openExp(null);$("#e-cancel").onclick=()=>{$("#exp-form-panel").hidden=true};
+$("#exp-list").addEventListener("click",e=>{const it=e.target.closest("[data-exp]");if(it)openExp(it.dataset.exp)});
+$("#exp-form").addEventListener("submit",async e=>{
+  e.preventDefault();if(!S.db)return toast("Base indisponible");
+  const body={title:$("#e-title").value.trim(),hyp:$("#e-hyp").value.trim(),target:$("#e-target").value.trim(),channel:$("#e-channel").value.trim(),budget:Number($("#e-budget").value)||0,days:Number($("#e-days").value)||0,start:$("#e-start").value,metric:$("#e-metric").value.trim(),threshold:$("#e-threshold").value.trim(),status:$("#e-status").value,validated:$("#e-validated").checked,result:$("#e-result").value.trim(),decision:$("#e-decision").value,updatedAt:new Date().toISOString()};
+  if(body.budget>0&&["Validée","En cours"].includes(body.status)&&!body.validated)return toast("Budget non validé par Yannis : l’expérience ne peut pas démarrer");
+  if(body.status==="Terminée"&&!body.decision)return toast("Indiquez la décision prise à la fin");
+  const ref=S.editExp?S.db.doc("experiments/"+S.editExp):S.db.collection("experiments").doc();
+  await writeDoc(ref.path,()=>ref.set(body));toast("Expérience enregistrée");$("#exp-form-panel").hidden=true;
+});
+$("#e-del").onclick=async()=>{if(!S.editExp)return;const ref=S.db.doc("experiments/"+S.editExp);await writeDoc(ref.path,()=>ref.delete());$("#exp-form-panel").hidden=true;toast("Supprimée")};
+function openFb(id){
+  const x=id?S.feedback.find(e=>e.id===id):{title:"",detail:"",source:"",stage:"Autre",status:"Ouvert"};
+  S.editFb=id;$("#fb-form-panel").hidden=false;$("#fb-del").hidden=!id;
+  $("#fb-title").value=x.title||"";$("#fb-detail").value=x.detail||"";$("#fb-source").value=x.source||"";$("#fb-stage").value=x.stage||"Autre";$("#fb-status").value=x.status||"Ouvert";$("#fb-title").focus();
+}
+$("#add-fb").onclick=()=>openFb(null);$("#fb-cancel").onclick=()=>{$("#fb-form-panel").hidden=true};
+$("#fb-list").addEventListener("click",e=>{const it=e.target.closest("[data-fb]");if(it)openFb(it.dataset.fb)});
+$("#fb-form").addEventListener("submit",async e=>{
+  e.preventDefault();if(!S.db)return toast("Base indisponible");
+  const prev=S.editFb?S.feedback.find(f=>f.id===S.editFb):null;
+  const body={title:$("#fb-title").value.trim(),detail:$("#fb-detail").value.trim(),source:$("#fb-source").value.trim(),stage:$("#fb-stage").value,status:$("#fb-status").value,createdAt:prev?.createdAt||today(),updatedAt:today()};
+  const ref=S.editFb?S.db.doc("feedback/"+S.editFb):S.db.collection("feedback").doc();
+  await writeDoc(ref.path,()=>ref.set(body));toast("Enregistré");$("#fb-form-panel").hidden=true;
+});
+$("#fb-del").onclick=async()=>{if(!S.editFb)return;const ref=S.db.doc("feedback/"+S.editFb);await writeDoc(ref.path,()=>ref.delete());$("#fb-form-panel").hidden=true;toast("Supprimé")};
+
+/* ---------- Réglages ---------- */
+let factsEdit=null;
+function renderSetup(force){
+  if(!factsEdit||force)factsEdit=JSON.parse(JSON.stringify(S.product?.facts||[]));
+  if(force||document.activeElement?.id!=="sender")$("#sender").value=S.product?.sender||"";
+  if(force||document.activeElement?.id!=="signature")$("#signature").value=S.product?.signature||"";
+  $("#facts").innerHTML=factsEdit.length?factsEdit.map((f,i)=>`<div class="item" style="cursor:default;grid-template-columns:1fr auto"><div class="t" style="font-weight:600">${esc(f.text)}</div><div class="r"><select data-fact="${i}" aria-label="Statut">${["À vérifier","Confirmé","Faux"].map(s=>`<option${s===f.status?" selected":""}>${s}</option>`).join("")}</select><button class="btn sm ghost" data-rmfact="${i}">Retirer</button></div>${f.source?`<div class="s">Source : ${esc(f.source)}</div>`:""}</div>`).join(""):emptyBlock("Aucun fait produit","Ajoutez ce que vous avez vérifié dans l’application.");
+  const it=S.integrations;
+  $("#integ-date").textContent=it?.checkedAt?`Audit du ${frDate(it.checkedAt)}`:"";
+  $("#integ").innerHTML="<tr><th>Service</th><th>État</th><th>Ce qu’il faut</th></tr>"+((it?.items)||[]).map(i=>`<tr><td><b>${esc(i.name)}</b></td><td><span class="pill ${i.state==="ok"?"g-won":i.state==="partial"?"g-risk":"g-lost"}">${i.state==="ok"?"Connecté et testé":i.state==="partial"?"Partiel":"Non connecté"}</span></td><td>${esc(i.todo||"")}</td></tr>`).join("");
+}
+$("#facts").addEventListener("change",e=>{const s=e.target.closest("[data-fact]");if(s)factsEdit[Number(s.dataset.fact)].status=s.value});
+$("#facts").addEventListener("click",e=>{const b=e.target.closest("[data-rmfact]");if(b){factsEdit.splice(Number(b.dataset.rmfact),1);renderSetup()}});
+$("#add-fact").onclick=()=>{const t=$("#new-fact").value.trim();if(!t)return;factsEdit.push({text:t,status:"Confirmé",source:"Ajouté le "+frDate(today())});$("#new-fact").value="";renderSetup()};
+$("#save-product").onclick=async()=>{if(!S.db)return toast("Base indisponible");const ref=S.db.doc("config/product");const body={...(S.product||{}),facts:factsEdit,sender:$("#sender").value.trim(),signature:$("#signature").value.trim(),updatedAt:today()};delete body.id;await writeDoc(ref.path,()=>ref.set(body));toast("Fiche produit enregistrée")};
+
+/* ---------- Rapport ---------- */
+$$("[data-rep]").forEach(b=>b.addEventListener("click",()=>{S.rep=b.dataset.rep;$$("[data-rep]").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));$("#report-ai").hidden=true;renderToday()}));
+$("#rep-copy").onclick=()=>copy($("#report").textContent);
+$("#rep-ai").onclick=async()=>{
+  const out=$("#report-ai");out.hidden=false;out.textContent="Analyse en cours…";const btn=$("#rep-ai");btn.disabled=true;
+  const stages={};S.prospects.forEach(p=>stages[p.stage]=(stages[p.stage]||0)+1);
+  const prompt=`Tu es l'agent de croissance de SwipSales (recrutement de profils commerciaux). Voici le rapport du jour, calculé à partir de données réelles, et la répartition du pipeline.\n\nRAPPORT\n${$("#report").textContent}\n\nPIPELINE PAR ÉTAPE\n${JSON.stringify(stages)}\n\nDonne en français, en 120 mots maximum : le principal goulot d'étranglement visible dans ces données, puis trois actions concrètes classées par impact potentiel sur le revenu récurrent. N'invente aucun chiffre ; si une donnée manque, dis quelle mesure brancher. Pas de titre, pas d'emoji.`;
+  try{const r=await S.sample(prompt,{onText:({text})=>out.textContent=text});out.textContent=r.text}
+  catch(e){out.textContent=e?.text||({not_granted:"Claude n’est pas autorisé pour cette page.",rate_limited:"Trop de demandes : réessayez plus tard."}[e?.code]||"Analyse indisponible.");if(["not_granted","sampling_disabled"].includes(e?.code))btn.hidden=true}
+  finally{btn.disabled=false}
+};
+
+/* ---------- Rendu global ---------- */
+function render(){
+  if(S.tab==="today"){renderToday();renderTodayExtra()}
+  else if(S.tab==="pipeline")renderPipeline();
+  else if(S.tab==="metrics")renderMetrics();
+  else if(S.tab==="partners")renderPartners();
+  else if(S.tab==="founding")renderFounding();
+  else if(S.tab==="campaigns")renderCampaigns();
+  else if(S.tab==="comms")renderComms();
+  else if(S.tab==="costs")renderCosts();
+  else if(S.tab==="growth")renderGrowth();
+  else if(S.tab==="setup")renderSetup();
+  const n=dueList().length;const c=$("#due-cnt");c.hidden=!n;c.textContent=n;
+}
+
+/* ---------- Démarrage ---------- */
+function showConn(html,info){const c=$("#conn");c.innerHTML=html;c.className="notice"+(info?" info":"");c.hidden=false}
+async function boot(){
+  try{const t=localStorage.getItem("ssg-tab");if(t&&document.querySelector(`[data-tab="${t}"]`))S.tab=t}catch{}
+  setTab(S.tab);
+  if(!window.claude?.use){showConn("<b>Données indisponibles.</b> Ouvrez cette page depuis Claude pour accéder au CRM.");return}
+  const [db,user,sample]=await Promise.all([claude.use("db"),claude.use("user"),claude.use("sample")]);
+  S.db=db;S.user=user;S.sample=sample;
+  if(sample){$("#rep-ai").hidden=false}
+  if(!db){showConn("<b>Base non accessible dans cet affichage.</b> Connectez-vous à Claude ou demandez l’accès Contributeur au propriétaire.");render();return}
+  try{const w=user?await user.can("data.write"):null;if(w===false){S.canWrite=false;showConn("<b>Lecture seule.</b> Vous pouvez consulter le CRM mais pas le modifier.",true)}}catch{}
+  const sub=(col,key,after)=>db.collection(col).onSnapshot(snap=>{S[key]=snap.docs.map(d=>({id:d.id,...d.data()}));after?.();render()},err=>{showConn("<b>Connexion à la base interrompue.</b> Rechargez la page.")});
+  sub("prospects","prospects",()=>{if(S.open&&!S.isNew&&!S.prospects.some(p=>p.id===S.open))closeDrawer()});
+  sub("metrics","metrics");sub("spend","spend");sub("campaigns","campaigns");sub("content","content");sub("experiments","experiments");sub("feedback","feedback");
+  db.collection("config").onSnapshot(snap=>{
+    const get=id=>{const d=snap.docs.find(x=>x.id===id);return d?{id,...d.data()}:null};
+    const firstProduct=!S.product;S.product=get("product");S.integrations=get("integrations");S.services=get("services");
+    if(S.tab==="setup")renderSetup(firstProduct);else factsEdit=null;
+    render();
+  },()=>{});
+}
+</script>
+<script>
+"use strict";
+/* ===== Étape 1 : espaces ABM, campagnes, validation, communication, performances, coûts ===== */
+const SEGMENTS=[["","Non segmenté"],["A","A · Partenaire"],["B","B · Founding Recruiter (grand compte ABM)"],["C","C · Vente directe"]];
+const SEG_LABEL={"":"—",A:"A · Partenaire",B:"B · Founding",C:"C · Vente directe"};
+const PARTNER_STATUS=["Identifié","Proposition envoyée","En négociation","Convention à valider","Actif","Refusé"];
+const OBJECTIONS=["On a déjà LinkedIn / Indeed","On passe par un cabinet","On recrute peu","Prix / budget","Je vais réfléchir","Envoyez une présentation","Pas intéressé","On a notre réseau","Vous êtes nouveaux / combien d'utilisateurs","Veut tester avant de payer","Ne veut pas d'abonnement","Autre"];
+const CAMP_STATUS=["Brouillon","Validée","En pause","Terminée"];
+const CONTENT_STATUS=["Idée","Brouillon","À valider","Validé","Publié"];
+const NETWORKS=["LinkedIn","Instagram","Facebook","TikTok","X"];
+const CHANNELS=["E-mail","LinkedIn","WhatsApp","Téléphone"];
+const CH_OF={contact_email:"E-mail",contact_linkedin:"LinkedIn",contact_whatsapp:"WhatsApp",contact_appel:"Téléphone"};
+const FOUNDING_SEATS=10;
+S.campaigns=[];S.content=[];S.editCamp=null;S.editContent=null;S.partnerFilter="all";S.contentFilter="all";
+
+/* ---------- Fiche : panneaux ABM ---------- */
+function opt(list,val){return list.map(o=>Array.isArray(o)?`<option value="${esc(o[0])}"${o[0]===(val||"")?" selected":""}>${esc(o[1])}</option>`:`<option${o===val?" selected":""}>${esc(o)}</option>`).join("")}
+function abmPanels(p){
+  const camps=S.campaigns.filter(c=>c.status==="Validée");
+  const cur=S.campaigns.find(c=>c.id===p.campaignId);
+  const day=p.trialStart?daysBetween(p.trialStart,today())+1:null;
+  return`<div class="panel">
+    <div class="panel-h"><h3>Segment ABM</h3><span class="small muted">décidé par Yannis</span></div>
+    <div class="fgrid">
+      <label class="f">Segment<select id="p-segment">${opt(SEGMENTS,p.segment)}</select></label>
+      <label class="check" style="align-self:end"><input type="checkbox" id="p-commsConsent"${p.commsConsent?" checked":""}> Accord écrit pour citer l’entreprise publiquement</label>
+      ${fld("p-commsConsentDate","Date de l’accord",p.commsConsentDate||"","date")}
+    </div>
+  </div>
+  <div class="panel" id="abm-A" ${p.segment==="A"?"":"hidden"}>
+    <h3>Partenariat</h3>
+    <div class="fgrid">
+      <label class="f">Statut du partenariat<select id="p-partnerStatus">${opt(PARTNER_STATUS,p.partnerStatus||"Identifié")}</select></label>
+      ${fld("p-partnerModel","Modèle proposé",p.partnerModel||"","text","Ex. affiliation 10 %, année offerte contre 5 entreprises")}
+      <label class="check" style="align-self:end"><input type="checkbox" id="p-conventionOk"${p.conventionOk?" checked":""}> Convention validée par Yannis</label>
+    </div>
+    ${area("p-partnerNotes","Suivi de la négociation",p.partnerNotes||"")}
+  </div>
+  <div class="panel" id="abm-B" ${p.segment==="B"?"":"hidden"}>
+    <div class="panel-h"><h3>Founding Recruiter</h3><span class="small muted">${day?`essai : jour ${Math.min(day,45)} sur 45`:"essai non démarré"}</span></div>
+    <div class="fgrid">
+      ${fld("p-trialStart","Début de l’essai",p.trialStart||"","date")}
+      ${fld("p-trialEnd","Fin de l’essai",p.trialEnd||"","date","Calculée : début + 45 jours")}
+      <label class="check" style="align-self:end"><input type="checkbox" id="p-engagementOk"${p.engagementOk?" checked":""}> Engagement écrit reçu</label>
+      <label class="check" style="align-self:end"><input type="checkbox" id="p-offerPublished"${p.offerPublished?" checked":""}> Offre réelle publiée</label>
+      ${fld("p-offerDate","Date de publication",p.offerDate||"","date")}
+      ${fld("p-feedbackScore","Note au bilan (sur 10)",p.feedbackScore??"","number","","min=\"0\" max=\"10\"")}
+      <label class="check" style="align-self:end"><input type="checkbox" id="p-referenceOk"${p.referenceOk?" checked":""}> Référence possible (satisfait)</label>
+    </div>
+    ${area("p-feedbackNotes","Retours collectés",p.feedbackNotes||"","Ce qui a marché, ce qui a manqué, en ses mots")}
+    ${S.isNew||p.trialStart?"":`<div class="row"><button class="btn sm primary" type="button" id="start-trial">Démarrer l’essai de 45 jours</button><span class="small muted">Engagement écrit requis</span></div>`}
+  </div>
+  ${S.isNew?"":`<div class="panel">
+    <div class="panel-h"><h3>Campagne</h3><span class="small muted">${cur?esc(cur.name)+" · "+esc(p.campaignState||""):"aucune"}</span></div>
+    <div class="row"><select id="p-campaign" style="flex:1;min-width:200px"><option value="">Choisir une campagne validée</option>${camps.map(c=>`<option value="${esc(c.id)}"${c.id===p.campaignId?" selected":""}>${esc(c.name)} (${esc(SEG_LABEL[c.segment]||"tous")})</option>`).join("")}</select><button class="btn sm" type="button" id="enroll">Inscrire</button></div>
+    ${camps.length?"":'<p class="small muted">Aucune campagne validée : validez-en une dans l’onglet Campagnes.</p>'}
+    ${cur?`<p class="small muted">Prochaine étape : ${esc(p.nextAction||"—")} · ${frDate(p.nextDate)}</p>`:""}
+  </div>`}`;
+}
+function toggleAbm(){const s=$("#p-segment")?.value;$("#abm-A")&&($("#abm-A").hidden=s!=="A");$("#abm-B")&&($("#abm-B").hidden=s!=="B")}
+function readAbm(){
+  const g=id=>$("#"+id);const v=id=>g(id)?g(id).value.trim():"";const c=id=>!!g(id)?.checked;
+  const o={segment:v("p-segment"),commsConsent:c("p-commsConsent"),commsConsentDate:v("p-commsConsentDate"),
+    partnerStatus:v("p-partnerStatus")||"Identifié",partnerModel:v("p-partnerModel"),conventionOk:c("p-conventionOk"),partnerNotes:v("p-partnerNotes"),
+    trialStart:v("p-trialStart"),trialEnd:v("p-trialEnd"),engagementOk:c("p-engagementOk"),offerPublished:c("p-offerPublished"),offerDate:v("p-offerDate"),
+    feedbackScore:v("p-feedbackScore")===""?null:Number(v("p-feedbackScore")),referenceOk:c("p-referenceOk"),feedbackNotes:v("p-feedbackNotes")};
+  if(o.trialStart&&!o.trialEnd)o.trialEnd=addDays(o.trialStart,45);
+  if(o.commsConsent&&!o.commsConsentDate)o.commsConsentDate=today();
+  return o;
+}
+function bindAbm(){
+  const st=$("#start-trial");if(st)st.onclick=async()=>{
+    if(!$("#p-engagementOk").checked){toast("Cochez d’abord « Engagement écrit reçu »");return}
+    const used=S.prospects.filter(p=>p.trialStart&&p.id!==S.open).length;
+    if(used>=FOUNDING_SEATS){toast(`Les ${FOUNDING_SEATS} places sont prises`);return}
+    const t=today();$("#p-trialStart").value=t;$("#p-trialEnd").value=addDays(t,45);
+    $("#p-stage").value="Essai Founding en cours";$("#p-nextAction").value="Vérifier la publication de l’offre (J+7)";$("#p-nextDate").value=addDays(t,7);
+    $("#dr-save").click();
+  };
+  const en=$("#enroll");if(en)en.onclick=async()=>{
+    const id=$("#p-campaign").value;const c=S.campaigns.find(x=>x.id===id);
+    if(!c){toast("Choisissez une campagne validée");return}
+    const p=readForm();
+    if(p.optOut){toast("Ne plus contacter : inscription impossible");return}
+    if(c.segment&&p.segment&&c.segment!==p.segment){toast("Le segment de la campagne ne correspond pas à celui de l’entreprise");return}
+    const s0=(c.steps||[])[0];const patch={campaignId:c.id,enrolledAt:today(),campaignState:"En cours",nextAction:s0?`Étape 1/${c.steps.length} · ${s0.channel} — ${c.name}`:"Campagne sans étape",nextDate:today()};
+    const ref=S.db.doc("prospects/"+S.open);await writeDoc(ref.path,()=>ref.update(patch));Object.assign(S.draft,patch);
+    $("#p-nextAction").value=patch.nextAction;$("#p-nextDate").value=patch.nextDate;toast("Inscrite à « "+c.name+" »");
+  };
+}
+function logExtrasHtml(p){
+  return`<div class="fgrid"><label class="f">Objection entendue (si « Objection entendue »)<select id="log-obj"><option value="">—</option>${opt(OBJECTIONS,"")}</select></label></div>`;
+}
+function logExtra(t){
+  const o={};const ob=$("#log-obj")?.value||"";
+  if(t==="objection"){if(!ob){toast("Choisissez l’objection entendue");return false}o.obj=ob}
+  const cur=S.prospects.find(x=>x.id===S.open)||S.draft;if(cur.campaignId)o.camp=cur.campaignId;
+  if(CH_OF[t])o.ch=CH_OF[t];
+  return o;
+}
+function applyCampaign(cur,history,patch,t){
+  const c=S.campaigns.find(x=>x.id===cur.campaignId);if(!c||cur.campaignState!=="En cours")return;
+  if(t==="reponse"){patch.campaignState="Arrêtée : réponse reçue";return}
+  if(!CONTACT_TYPES.includes(t))return;
+  const n=history.filter(h=>CONTACT_TYPES.includes(h.t)&&h.camp===c.id).length;const steps=c.steps||[];
+  if(n>=steps.length){patch.campaignState="Terminée sans réponse";patch.nextAction="Séquence terminée : recontacter dans 3 mois";patch.nextDate=addDays(today(),90);patch.stage="À recontacter";return}
+  const s=steps[n];const d=addDays(cur.enrolledAt||today(),Number(s.day)||0);
+  patch.nextAction=`Étape ${n+1}/${steps.length} · ${s.channel} — ${c.name}`;patch.nextDate=d<today()?today():d;
+}
+
+/* ---------- Validation ---------- */
+function pendingValidation(){
+  const items=[];
+  S.campaigns.filter(c=>c.status==="Brouillon").forEach(c=>items.push({k:"camp",id:c.id,t:`Campagne « ${c.name} »`,s:"à valider avant tout envoi"}));
+  S.prospects.filter(p=>p.drafts&&!p.drafts.validated&&!p.optOut).forEach(p=>items.push({k:"draft",id:p.id,t:`Messages pour ${p.company}`,s:"brouillons à relire et valider"}));
+  S.prospects.filter(p=>p.partnerStatus==="Convention à valider"&&!p.conventionOk).forEach(p=>items.push({k:"draft",id:p.id,t:`Convention ${p.company}`,s:"partenariat à valider"}));
+  S.content.filter(x=>x.status==="À valider").forEach(x=>items.push({k:"content",id:x.id,t:`Publication « ${x.title} »`,s:x.prospectId?"cite une entreprise : accord requis":"contenu à valider"}));
+  return items;
+}
+function validationHtml(){
+  const v=pendingValidation();
+  return v.length?v.map(i=>`<div class="item" data-val="${i.k}" data-id="${esc(i.id)}" tabindex="0" role="button"><div class="t">${esc(i.t)}</div><div class="r"><span class="pill g-risk">À valider</span></div><div class="s">${esc(i.s)}</div></div>`).join(""):emptyBlock("Rien à valider","Les campagnes, messages, conventions et publications en attente apparaîtront ici.");
+}
+document.addEventListener("click",e=>{
+  const v=e.target.closest("[data-val]");if(!v)return;
+  if(v.dataset.val==="draft")openProspect(v.dataset.id);
+  if(v.dataset.val==="camp"){setTab("campaigns");openCamp(v.dataset.id)}
+  if(v.dataset.val==="content"){setTab("comms");openContent(v.dataset.id)}
+});
+function renderTodayExtra(){
+  const n=pendingValidation().length;let el=$("#today-val");
+  if(!el){el=document.createElement("div");el.className="panel";el.id="today-val";$("#v-today").insertBefore(el,$("#v-today").children[1])}
+  el.innerHTML=`<div class="panel-h"><h2>À valider par Yannis</h2><span class="small muted">${n} élément${n>1?"s":""}</span></div><div class="list">${validationHtml()}</div>`;
+}
+
+/* ---------- Partenariats ---------- */
+const PARTNER_KINDS=["Cabinet de recrutement","École / formation (partenaire)","Apporteur d'affaires","Autre partenaire"];
+function renderPartners(){
+  const list=S.prospects.filter(p=>p.segment==="A"||(!p.segment&&PARTNER_KINDS.includes(p.kind)));
+  const f=S.partnerFilter;const shown=list.filter(p=>f==="all"||(p.partnerStatus||"Identifié")===f);
+  const counts={};list.forEach(p=>{const s=p.partnerStatus||"Identifié";counts[s]=(counts[s]||0)+1});
+  $("#partner-chips").innerHTML=`<button class="chip" data-pf="all" aria-pressed="${f==="all"}">Tous<span class="n">${list.length}</span></button>`+PARTNER_STATUS.map(s=>`<button class="chip" data-pf="${esc(s)}" aria-pressed="${f===s}">${esc(s)}<span class="n">${counts[s]||0}</span></button>`).join("");
+  $("#partner-list").innerHTML=shown.length?shown.map(p=>prospectItem(p,`<span class="tag">${esc(p.kind||"")}</span><span class="tag ${p.partnerStatus==="Actif"?"fact":""}">${esc(p.partnerStatus||"Identifié")}</span>${p.partnerModel?`<span>${esc(p.partnerModel)}</span>`:""}${p.segment?"":'<span class="tag hyp">segment à définir</span>'}`)).join(""):emptyBlock("Aucun partenaire","Passez une fiche en segment A (Partenaire) pour la suivre ici.");
+}
+$("#partner-chips")?.addEventListener("click",e=>{const b=e.target.closest("[data-pf]");if(b){S.partnerFilter=b.dataset.pf;renderPartners()}});
+
+/* ---------- Founding Recruiters ---------- */
+function renderFounding(){
+  const list=S.prospects.filter(p=>p.segment==="B");const used=list.filter(p=>p.trialStart).length;
+  const t=today();
+  const conv=list.filter(p=>p.trialStart&&p.stage==="Client payant"&&p.stripeVerified).length;
+  const done=list.filter(p=>p.trialEnd&&p.trialEnd<t).length;
+  $("#founding-kpis").innerHTML=kpi("Places utilisées",`${used} / ${FOUNDING_SEATS}`,"essais démarrés","CRM")+
+    kpi("Offres publiées",list.filter(p=>p.offerPublished).length,"pilotes avec une offre réelle","CRM")+
+    kpi("Essais terminés",done,"date de fin dépassée","CRM")+
+    kpi("Passés au payant",`${conv}${done?" / "+done:""}`,"Client payant vérifié Stripe","CRM + Stripe")+
+    kpi("Références possibles",list.filter(p=>p.referenceOk).length,"satisfaits au bilan","CRM")+
+    kpi("Accords pour citer",list.filter(p=>p.commsConsent).length,"accord écrit reçu","CRM");
+  const alerts=[];
+  list.forEach(p=>{if(!p.trialStart)return;const d=daysBetween(p.trialStart,t)+1;
+    if(d>=7&&!p.offerPublished)alerts.push([p,`J+${d} : offre pas encore publiée`]);
+    if(d>=15&&d<20)alerts.push([p,"Point de mi-parcours (J+15)"]);
+    if(d>=35&&d<40)alerts.push([p,"Envoyer le bilan chiffré (J+35)"]);
+    if(d>=40&&d<43&&p.feedbackScore==null)alerts.push([p,"Appel de bilan (J+40)"]);
+    if(d>=43&&d<=45&&p.stage!=="Client payant")alerts.push([p,"Proposition d’abonnement (J+43)"]);});
+  $("#founding-alerts").innerHTML=alerts.length?alerts.map(([p,a])=>prospectItem(p,`<b class="late">${esc(a)}</b>`)).join(""):emptyBlock("Aucune échéance","Les points J+7, J+15, J+35, J+40 et J+43 s’affichent ici.");
+  $("#founding-list").innerHTML=list.length?list.map(p=>{const d=p.trialStart?Math.min(daysBetween(p.trialStart,t)+1,45):null;
+    return prospectItem(p,`${d?`<span class="tag">Essai J${d}/45</span>`:'<span class="tag hyp">éligible, essai non démarré</span>'}${p.offerPublished?'<span class="tag fact">Offre publiée</span>':""}${p.feedbackScore!=null?`<span class="tag">Bilan ${p.feedbackScore}/10</span>`:""}${p.referenceOk?'<span class="tag fact">Référence</span>':""}${p.commsConsent?'<span class="tag fact">Accord pour citer</span>':""}`)}).join(""):emptyBlock("Aucun grand compte en segment B","Passez une fiche en segment B (Founding Recruiter) pour la suivre ici.");
+}
+
+/* ---------- Campagnes ---------- */
+function renderCampaigns(){
+  $("#val-list").innerHTML=validationHtml();
+  const ord={"Validée":0,"Brouillon":1,"En pause":2,"Terminée":3};
+  const cs=[...S.campaigns].sort((a,b)=>(ord[a.status]??9)-(ord[b.status]??9));
+  $("#camp-list").innerHTML=cs.length?cs.map(c=>{const enrolled=S.prospects.filter(p=>p.campaignId===c.id);const running=enrolled.filter(p=>p.campaignState==="En cours").length;
+    return`<div class="item" data-camp="${esc(c.id)}" tabindex="0" role="button"><div class="t">${esc(c.name)}</div><div class="r"><span class="tag">${esc(SEG_LABEL[c.segment]||"Tous segments")}</span><span class="pill ${c.status==="Validée"?"g-won":c.status==="Brouillon"?"g-risk":"g-early"}">${esc(c.status)}</span></div><div class="s"><span>${(c.steps||[]).length} étapes</span><span>${enrolled.length} inscrits, ${running} en cours</span>${c.goal?`<span>${esc(c.goal)}</span>`:""}</div></div>`}).join(""):emptyBlock("Aucune campagne","Créez une campagne : objectif, angle, étapes. Elle devra être validée avant tout envoi.");
+}
+function stepRow(s,i){return`<div class="fgrid step-row" data-i="${i}" style="border-top:1px solid var(--line);padding-top:8px">
+  <label class="f">Jour<input type="number" min="0" class="st-day" value="${esc(s.day??0)}"></label>
+  <label class="f">Canal<select class="st-ch">${opt(CHANNELS,s.channel||"E-mail")}</select></label>
+  <label class="f" style="grid-column:1/-1">Message (variables : {Prénom}, {Entreprise}, {intitulé}, {signal})<textarea class="st-tpl" rows="5">${esc(s.template||"")}</textarea></label>
+  <div class="row" style="grid-column:1/-1"><button type="button" class="btn sm ghost st-del">Retirer cette étape</button></div></div>`}
+function openCamp(id){
+  const c=id?S.campaigns.find(x=>x.id===id):{name:"",segment:"C",goal:"",angle:"",cta:"",dailyCap:20,status:"Brouillon",steps:[{day:0,channel:"E-mail",template:""}]};
+  if(!c)return;S.editCamp=id;$("#camp-form-panel").hidden=false;
+  $("#c-name").value=c.name||"";$("#c-segment").innerHTML=opt(SEGMENTS,c.segment);$("#c-goal").value=c.goal||"";$("#c-angle").value=c.angle||"";$("#c-cta").value=c.cta||"";$("#c-cap").value=c.dailyCap??20;
+  $("#c-status").textContent=c.status+(c.validatedAt?` le ${frDate(c.validatedAt)}`:"");
+  $("#c-steps").innerHTML=(c.steps||[]).map(stepRow).join("");
+  $("#c-validate").hidden=c.status==="Validée";$("#c-pause").hidden=c.status!=="Validée";$("#c-del").hidden=!id;
+  $("#camp-form-panel").scrollIntoView({block:"nearest"});
+}
+function readCamp(){
+  const steps=$$("#c-steps .step-row").map(r=>({day:Number(r.querySelector(".st-day").value)||0,channel:r.querySelector(".st-ch").value,template:r.querySelector(".st-tpl").value.trim()})).sort((a,b)=>a.day-b.day);
+  return{name:$("#c-name").value.trim(),segment:$("#c-segment").value,goal:$("#c-goal").value.trim(),angle:$("#c-angle").value.trim(),cta:$("#c-cta").value.trim(),dailyCap:Number($("#c-cap").value)||20,steps};
+}
+async function saveCamp(statusOverride){
+  if(!S.db)return toast("Base indisponible");
+  const b=readCamp();if(!b.name)return toast("Nom de campagne obligatoire");if(!b.steps.length)return toast("Ajoutez au moins une étape");
+  const prev=S.editCamp?S.campaigns.find(x=>x.id===S.editCamp):null;
+  const changed=prev&&JSON.stringify({...b})!==JSON.stringify({name:prev.name,segment:prev.segment,goal:prev.goal,angle:prev.angle,cta:prev.cta,dailyCap:prev.dailyCap,steps:prev.steps});
+  let status=statusOverride||prev?.status||"Brouillon";
+  if(!statusOverride&&prev?.status==="Validée"&&changed)status="Brouillon";
+  const body={...b,status,validatedAt:status==="Validée"?(statusOverride==="Validée"?today():prev?.validatedAt||today()):null,updatedAt:new Date().toISOString()};
+  const ref=S.editCamp?S.db.doc("campaigns/"+S.editCamp):S.db.collection("campaigns").doc();
+  await writeDoc(ref.path,()=>ref.set(body));S.editCamp=ref.id;{const i=S.campaigns.findIndex(x=>x.id===ref.id);const row={id:ref.id,...body};if(i>=0)S.campaigns[i]=row;else S.campaigns.push(row);renderCampaigns()}
+  toast(status==="Validée"&&statusOverride?"Campagne validée":changed&&prev?.status==="Validée"?"Modifiée : à revalider avant envoi":"Campagne enregistrée");
+  openCamp(ref.id);
+}
+document.addEventListener("click",e=>{const it=e.target.closest("[data-camp]");if(it)openCamp(it.dataset.camp)});
+
+/* ---------- Communication ---------- */
+function contentSuggestions(){
+  const s=[];const linked=new Set(S.content.map(c=>c.prospectId+"|"+c.kind));
+  S.prospects.forEach(p=>{
+    if(p.segment==="B"&&p.trialStart&&p.commsConsent&&!linked.has(p.id+"|welcome"))s.push({kind:"welcome",p,t:`Bienvenue à ${p.company}, Founding Recruiter`,why:"Essai démarré et accord écrit reçu"});
+    if(p.segment==="A"&&p.partnerStatus==="Actif"&&p.commsConsent&&!linked.has(p.id+"|partner"))s.push({kind:"partner",p,t:`Annonce du partenariat avec ${p.company}`,why:"Partenariat actif et accord écrit reçu"});
+    if(p.offerPublished&&p.commsConsent&&!linked.has(p.id+"|offer"))s.push({kind:"offer",p,t:`Offre publiée par ${p.company}`,why:"Offre réelle en ligne et accord écrit reçu"});
+  });
+  const oc={};S.prospects.forEach(p=>(p.history||[]).forEach(h=>{if(h.t==="objection"&&h.obj)oc[h.obj]=(oc[h.obj]||0)+1}));
+  Object.entries(oc).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).slice(0,3).forEach(([o,n])=>{if(!linked.has("|obj:"+o))s.push({kind:"obj:"+o,p:null,t:`Contenu qui répond à « ${o} »`,why:`Objection entendue ${n} fois en prospection`})});
+  return s;
+}
+function renderComms(){
+  const sug=contentSuggestions();
+  $("#sug-list").innerHTML=sug.length?sug.map((x,i)=>`<div class="item" style="cursor:default"><div class="t">${esc(x.t)}</div><div class="r"><button class="btn sm primary" data-sug="${i}">Préparer</button></div><div class="s">${esc(x.why)}</div></div>`).join(""):emptyBlock("Pas de suggestion pour l’instant","L’agent propose un contenu quand un pilote démarre avec accord, qu’un partenariat devient actif, qu’une offre est publiée ou qu’une objection revient.");
+  $$("[data-sug]").forEach(b=>b.onclick=()=>draftFromSuggestion(sug[Number(b.dataset.sug)],b));
+  const f=S.contentFilter;const counts={};S.content.forEach(c=>counts[c.status]=(counts[c.status]||0)+1);
+  $("#content-chips").innerHTML=`<button class="chip" data-cf="all" aria-pressed="${f==="all"}">Tous<span class="n">${S.content.length}</span></button>`+CONTENT_STATUS.map(s=>`<button class="chip" data-cf="${esc(s)}" aria-pressed="${f===s}">${esc(s)}<span class="n">${counts[s]||0}</span></button>`).join("");
+  const list=S.content.filter(c=>f==="all"||c.status===f).sort((a,b)=>(a.date||"9").localeCompare(b.date||"9"));
+  $("#content-list").innerHTML=list.length?list.map(c=>`<div class="item" data-content="${esc(c.id)}" tabindex="0" role="button"><div class="t">${esc(c.title)}</div><div class="r"><span class="tag">${esc((c.networks||[]).join(", "))}</span><span class="pill ${c.status==="Publié"?"g-won":c.status==="À valider"?"g-risk":c.status==="Validé"?"g-out":"g-early"}">${esc(c.status)}</span></div><div class="s"><span>${esc(c.format||"")}</span><span>${esc(c.target||"")}</span>${c.date?`<span>${frDate(c.date)}</span>`:""}${c.prospectId?'<span class="tag hyp">cite une entreprise</span>':""}</div></div>`).join(""):emptyBlock("Aucun contenu","Ajoutez une idée ou préparez une suggestion de l’agent.");
+  renderCandidats();
+}
+$("#content-chips")?.addEventListener("click",e=>{const b=e.target.closest("[data-cf]");if(b){S.contentFilter=b.dataset.cf;renderComms()}});
+document.addEventListener("click",e=>{const it=e.target.closest("[data-content]");if(it)openContent(it.dataset.content)});
+function openContent(id){
+  const c=id?S.content.find(x=>x.id===id):{title:"",networks:["LinkedIn"],format:"Post texte",target:"Recruteur",hook:"",text:"",cta:"",status:"Idée",date:"",prospectId:""};
+  if(!c)return;S.editContent=id;$("#content-form-panel").hidden=false;
+  $("#k-title").value=c.title||"";$("#k-format").value=c.format||"";$("#k-target").value=c.target||"Recruteur";$("#k-hook").value=c.hook||"";$("#k-text").value=c.text||"";$("#k-cta").value=c.cta||"";$("#k-date").value=c.date||"";
+  $("#k-status").innerHTML=opt(CONTENT_STATUS,c.status);
+  $("#k-networks").innerHTML=NETWORKS.map(n=>`<label class="check"><input type="checkbox" value="${n}"${(c.networks||[]).includes(n)?" checked":""}> ${n}</label>`).join("");
+  $("#k-prospect").innerHTML=`<option value="">Aucune</option>`+S.prospects.map(p=>`<option value="${esc(p.id)}"${p.id===c.prospectId?" selected":""}>${esc(p.company)}${p.commsConsent?"":" (pas d’accord)"}</option>`).join("");
+  $("#k-del").hidden=!id;$("#content-form-panel").scrollIntoView({block:"nearest"});
+}
+async function saveContent(){
+  if(!S.db)return toast("Base indisponible");
+  const prev=S.editContent?S.content.find(x=>x.id===S.editContent):null;
+  const body={title:$("#k-title").value.trim(),networks:$$("#k-networks input:checked").map(i=>i.value),format:$("#k-format").value.trim(),target:$("#k-target").value,hook:$("#k-hook").value.trim(),text:$("#k-text").value,cta:$("#k-cta").value.trim(),date:$("#k-date").value,status:$("#k-status").value,prospectId:$("#k-prospect").value,kind:prev?.kind||"",updatedAt:new Date().toISOString()};
+  if(!body.title)return toast("Titre obligatoire");
+  const p=S.prospects.find(x=>x.id===body.prospectId);
+  if(p&&["Validé","Publié"].includes(body.status)&&!p.commsConsent)return toast(`Pas d’accord écrit de ${p.company} : impossible de valider`);
+  const ref=S.editContent?S.db.doc("content/"+S.editContent):S.db.collection("content").doc();
+  await writeDoc(ref.path,()=>ref.set(body));S.editContent=ref.id;toast("Contenu enregistré");
+}
+async function draftFromSuggestion(x,btn){
+  if(!S.db)return;btn.disabled=true;btn.textContent="Rédaction…";
+  const p=x.p;const facts=confirmedFacts();
+  const base={title:x.t,networks:["LinkedIn","Instagram"],format:x.kind.startsWith("obj:")?"Carrousel":"Post visuel",target:x.kind.startsWith("obj:")?"Recruteur":"Les deux",hook:"",text:"",cta:"",status:"À valider",date:"",prospectId:p?.id||"",kind:p?x.kind:"|"+x.kind};
+  let text="";
+  if(S.sample){
+    const prompt=`Rédige en français un post LinkedIn pour la page SwipSales (plateforme de recrutement réservée aux profils commerciaux), 90 mots maximum, ton direct et humain, sans emoji, sans hashtag inutile.
+Sujet : ${x.t}. Contexte : ${x.why}.
+${p?`Entreprise concernée : ${p.company}${p.roles?", postes : "+p.roles:""}${p.sector?", secteur : "+p.sector:""}. N'invente rien sur elle : pas de citation, pas de chiffre, pas de résultat.`:""}
+Faits produit utilisables : ${facts.length?facts.join(" ; "):"plateforme réservée au recrutement commercial, matching par swipe, échange après un match"}.
+Règles : aucun prix, aucun chiffre sur SwipSales, aucune promesse de résultat, aucun témoignage inventé. Si une citation de l'entreprise serait utile, écris [CITATION À DEMANDER].
+Réponds uniquement par le texte du post.`;
+    try{text=(await S.sample(prompt,{cache:false})).text}catch(e){text=""}
+  }
+  if(!text)text=p?`${x.t}.\n\n${p.company}${p.roles?" recrute des "+p.roles:""}. [À compléter avec ce que l'entreprise accepte de dire.]\n\nCommerciaux : l'offre est sur SwipSales, swipez-la.`:`${x.t}\n\n[Réponse à l'objection en 3 points, sans prix ni chiffre.]`;
+  base.text=text;base.hook=text.split("\n")[0].slice(0,120);
+  const ref=S.db.collection("content").doc();await writeDoc(ref.path,()=>ref.set({...base,updatedAt:new Date().toISOString()}));
+  toast("Brouillon créé : à valider");btn.disabled=false;btn.textContent="Préparer";
+}
+
+/* ---------- Performances ---------- */
+function perfRows(groupKey){
+  const g={};
+  S.prospects.forEach(p=>{const hs=p.history||[];const first=hs.find(h=>CONTACT_TYPES.includes(h.t));if(!first)return;
+    const keys=groupKey(p,first,hs);(Array.isArray(keys)?keys:[keys]).forEach(k=>{if(!k)return;const r=g[k]||(g[k]={n:0,rep:0,rdv:0,paid:0});r.n++;
+      if(hs.some(h=>h.t==="reponse"))r.rep++;if(hs.some(h=>h.t==="rdv"||h.t==="demo"))r.rdv++;if(p.stage==="Client payant"&&p.stripeVerified)r.paid++;})});
+  return Object.entries(g).sort((a,b)=>b[1].n-a[1].n);
+}
+function perfTable(title,rows,label){
+  if(!rows.length)return`<div class="panel"><h3>${esc(title)}</h3><p class="small muted">Pas encore de contact journalisé.</p></div>`;
+  return`<div class="panel"><h3>${esc(title)}</h3><div class="tbl-wrap"><table><tr><th>${esc(label)}</th><th>Contactés</th><th>Ont répondu</th><th>Taux</th><th>RDV / démo</th><th>Payants</th></tr>${rows.map(([k,r])=>`<tr><td>${esc(k)}</td><td class="num">${r.n}</td><td class="num">${r.rep}</td><td class="num">${pct(r.rep/r.n)}</td><td class="num">${r.rdv}</td><td class="num">${r.paid}</td></tr>`).join("")}</table></div>${rows.some(([,r])=>r.n<10)?'<p class="small muted">Moins de 10 entreprises dans un groupe : écart non significatif, ne pas conclure.</p>':""}</div>`;
+}
+function renderPerf(){
+  const el=$("#perf");if(!el)return;
+  const oc={};S.prospects.forEach(p=>(p.history||[]).forEach(h=>{if(h.t==="objection"&&h.obj)oc[h.obj]=(oc[h.obj]||0)+1}));
+  const obj=Object.entries(oc).sort((a,b)=>b[1]-a[1]);
+  const campName=id=>S.campaigns.find(c=>c.id===id)?.name||"Hors campagne";
+  el.innerHTML=`<div class="grid2">
+    ${perfTable("Par canal du premier contact",perfRows((p,f)=>f.ch||CH_OF[f.t]||"?"),"Canal")}
+    ${perfTable("Par campagne",perfRows((p,f)=>campName(f.camp||p.campaignId)),"Campagne")}
+    ${perfTable("Par secteur",perfRows(p=>p.sector||"Non renseigné"),"Secteur")}
+    ${perfTable("Par segment ABM",perfRows(p=>SEG_LABEL[p.segment||""]),"Segment")}
+  </div>
+  <div class="panel"><h3>Objections les plus fréquentes</h3>${obj.length?`<div class="bars">${obj.map(([o,n])=>`<div class="bar"><span>${esc(o)}</span><div class="trk"><div class="fill" style="width:${n/obj[0][1]*100}%"></div></div><span class="n">${n}</span></div>`).join("")}</div><p class="small muted">Une objection entendue 2 fois ou plus devient une suggestion de contenu dans Communication.</p>`:'<p class="small muted">Journalisez « Objection entendue » dans les fiches pour voir apparaître les tendances.</p>'}</div>`;
+}
+
+/* ---------- Coûts ---------- */
+function renderCosts(){
+  const items=S.services?.items||[];
+  $("#services").innerHTML="<tr><th>Service</th><th>Usage</th><th>Coût fixe</th><th>Coût variable</th><th>Alternative</th><th>Statut</th></tr>"+items.map(i=>`<tr><td><b>${esc(i.name)}</b></td><td>${esc(i.use||"")}</td><td>${esc(i.fixed||"")}</td><td>${esc(i.variable||"")}</td><td>${esc(i.alt||"")}</td><td><span class="pill ${i.status==="Utilisé"?"g-won":i.status==="Proposé"?"g-risk":"g-early"}">${esc(i.status||"")}</span></td></tr>`).join("");
+  const m=today().slice(0,7);const tot=S.spend.filter(x=>(x.date||"").startsWith(m)).reduce((a,x)=>a+Number(x.amount||0),0);
+  $("#cost-kpis").innerHTML=kpi("Dépenses du mois",eur(tot),"total saisi dans Dépenses",`mois ${m}`)+kpi("Abonnements payants",items.filter(i=>i.status==="Utilisé"&&i.fixed&&!/^0|inclus|gratuit/i.test(i.fixed)).length,"services payants actifs","Liste des services");
+}
+
+/* ---------- Câblage ---------- */
+$("#add-camp").onclick=()=>openCamp(null);
+$("#c-add-step").onclick=()=>{const n=$$("#c-steps .step-row").length;$("#c-steps").insertAdjacentHTML("beforeend",stepRow({day:n?[3,7,14,21][Math.min(n-1,3)]:0,channel:"E-mail",template:""},n))};
+$("#c-steps").addEventListener("click",e=>{if(e.target.closest(".st-del"))e.target.closest(".step-row").remove()});
+$("#c-save").onclick=()=>saveCamp(null);
+$("#c-validate").onclick=()=>saveCamp("Validée");
+$("#c-pause").onclick=()=>saveCamp("En pause");
+$("#c-cancel").onclick=()=>{$("#camp-form-panel").hidden=true};
+$("#c-del").onclick=async()=>{if(!S.editCamp)return;if(S.prospects.some(p=>p.campaignId===S.editCamp&&p.campaignState==="En cours"))return toast("Des entreprises sont en cours dans cette campagne : mettez-la en pause");const ref=S.db.doc("campaigns/"+S.editCamp);await writeDoc(ref.path,()=>ref.delete());$("#camp-form-panel").hidden=true;toast("Campagne supprimée")};
+$("#add-content").onclick=()=>openContent(null);
+$("#k-save").onclick=saveContent;
+$("#k-cancel").onclick=()=>{$("#content-form-panel").hidden=true};
+$("#k-copy").onclick=()=>copy([$("#k-hook").value,$("#k-text").value,$("#k-cta").value].filter(Boolean).join("\n\n"));
+$("#k-del").onclick=async()=>{if(!S.editContent)return;const ref=S.db.doc("content/"+S.editContent);await writeDoc(ref.path,()=>ref.delete());$("#content-form-panel").hidden=true;toast("Supprimé")};
+boot();
+</script>

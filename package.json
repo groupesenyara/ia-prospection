@@ -1,0 +1,32 @@
+{
+  "name": "ia-prospection",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SwipSales Growth : agent commercial, partenariats, Founding Recruiters et communication",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:sql": "vitest run supabase",
+    "import:artifact": "tsx scripts/import-artifact.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.40.1",
+    "@supabase/supabase-js": "2.49.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.2.17",
+    "@types/node": "22.13.10",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@vitejs/plugin-react": "4.3.4",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vite": "5.4.14",
+    "vitest": "2.1.9"
+  }
+}
