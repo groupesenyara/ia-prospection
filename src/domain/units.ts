@@ -31,7 +31,7 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
     id: "swipsales",
     name: "Swipe Sales",
     pitch: "SaaS de recrutement réservé aux profils commerciaux : les entreprises et les candidats commerciaux se découvrent par swipe et échangent après un match.",
-    offers: ["Abonnement à la plateforme de recrutement de profils commerciaux", "Programme Founding Recruiters (essai encadré, 10 places)", "Partenariats avec écoles et cabinets"],
+    offers: ["Abonnement recruteur à la plateforme de recrutement de profils commerciaux", "Partenariats avec les écoles de commerce", "Programme d'affiliation (influenceurs)"],
     targets: ["Entreprises qui recrutent des commerciaux", "Cabinets de recrutement", "Startups et PME", "ESN et sociétés commerciales"],
     buyers: ["DRH ou responsable recrutement", "Directeur commercial", "Dirigeant de PME"],
     signals: ["Offres d'emploi commerciales (SDR, BDR, account executive, commercial terrain)", "Plusieurs postes commerciaux ouverts", "Croissance de l'équipe commerciale", "Levée de fonds ou ouverture d'agence"],
@@ -42,7 +42,10 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
     lostStages: ["Client perdu"],
     activeStages: ["À contacter", "Contact effectué", "Réponse reçue", "Rendez-vous planifié", "Démonstration réalisée", "Offre présentée", "Essai Founding en cours"],
     probability: P([["Entreprise identifiée", 0.02], ["À qualifier", 0.03], ["Prospect qualifié", 0.08], ["À contacter", 0.08], ["Contact effectué", 0.1], ["Réponse reçue", 0.2], ["Rendez-vous planifié", 0.3], ["Démonstration réalisée", 0.45], ["Offre présentée", 0.6], ["Essai Founding en cours", 0.5], ["Abonnement commencé", 0.9], ["Client payant", 1], ["Client à risque", 0.6], ["Client perdu", 0], ["À recontacter", 0.05]]),
-    forbidden: ["N'affirme jamais que Swipe Sales permet de recruter plus vite, moins cher ou mieux.", "Aucun chiffre d'utilisateurs, de candidats ou de résultats non confirmé."],
+    forbidden: [
+      "N'affirme jamais que Swipe Sales permet de recruter plus vite, moins cher ou mieux.", "Aucun chiffre d'utilisateurs, de candidats ou de résultats non confirmé.",
+      "Ne propose JAMAIS d'essai gratuit ni le programme Founding Recruiters : Yannis le réserve aux comptes qu'il sélectionne et prospecte lui-même.",
+    ],
   },
   amandis: {
     id: "amandis",
@@ -73,8 +76,8 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
   },
   northreef: {
     id: "northreef",
-    name: "North Reef",
-    pitch: "Développement digital du Groupe Senyara : sites web, applications, logiciels métiers, plateformes SaaS, agents IA et automatisations sur mesure.",
+    name: "Groupe Senyara · Web & IA",
+    pitch: "Agence web du Groupe Senyara (nom face aux prospects : « Groupe Senyara ») : sites web, applications, logiciels métiers, plateformes SaaS, agents IA et automatisations sur mesure.",
     offers: [
       "Site vitrine, site professionnel, e-commerce, refonte, optimisation et maintenance",
       "Application web ou mobile, logiciel métier, outil professionnel sur mesure, plateforme SaaS, espace client ou portail",
@@ -82,7 +85,7 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
       "Cartes et plaques NFC avis Google personnalisées, installées et testées sur place ; cartes de menu et supports de communication",
       "Régie : mise à disposition d'un développeur",
     ],
-    targets: ["Artisans et commerçants", "TPE et PME", "Entreprises locales", "Industries", "Cabinets professionnels", "Organismes de formation", "Startups", "Franchises", "Entreprises de services", "Zone : Hauts-de-France uniquement"],
+    targets: ["Artisans et commerçants", "TPE et PME", "Entreprises locales", "Industries", "Cabinets professionnels", "Organismes de formation", "Startups", "Franchises", "Entreprises de services"],
     buyers: ["Dirigeant", "Responsable des opérations", "Responsable marketing ou communication", "DSI ou responsable informatique"],
     signals: [
       "Pas de site internet, ou site vieillissant (design daté, copyright ancien, pas de HTTPS)", "Site non adapté au mobile", "Faible présence numérique",
@@ -97,6 +100,7 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
     activeStages: ["Contact effectué", "Réponse reçue", "Rendez-vous découverte", "Audit ou cahier des charges", "Devis envoyé"],
     probability: P([["Entreprise identifiée", 0.02], ["À qualifier", 0.03], ["Besoin qualifié", 0.08], ["Contact effectué", 0.1], ["Réponse reçue", 0.2], ["Rendez-vous découverte", 0.3], ["Audit ou cahier des charges", 0.45], ["Devis envoyé", 0.55], ["Projet signé", 1], ["Projet livré", 1], ["Perdu", 0], ["À recontacter", 0.05]]),
     forbidden: [
+      "Face au prospect, présente-toi au nom du « Groupe Senyara ».",
       "Ne critique jamais le site ou les outils de l'entreprise : décris un constat factuel et sourcé, sous forme de question.",
       "Aucun délai de livraison, aucun prix, aucune référence client ni aucun gain chiffré non confirmé.",
     ],

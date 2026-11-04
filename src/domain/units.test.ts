@@ -121,3 +121,12 @@ describe("base de connaissances du 2026-11-05", () => {
     expect(checkClaims("Déjà 500 candidats inscrits.", facts).map((i) => i.rule)).toEqual(["référence"]);
   });
 });
+
+describe("précisions du 2026-11-05", () => {
+  it("l'agent ne propose jamais l'essai gratuit SwipSales ; pas de limite géographique ; nom Groupe Senyara", () => {
+    expect(UNITS.swipsales.offers.join(" ")).not.toMatch(/essai|founding/i);
+    expect(UNITS.swipsales.forbidden.join(" ")).toMatch(/essai gratuit/);
+    expect(JSON.stringify(UNITS)).not.toMatch(/Hauts-de-France/);
+    expect(playbookText("northreef", [])).toMatch(/« Groupe Senyara »/);
+  });
+});
