@@ -137,6 +137,7 @@ const dept = (cp: string) => (cp.startsWith("97") ? cp.slice(0, 3) : cp.slice(0,
 /** Choisit la fiche du registre qui correspond à l'entreprise de l'offre : active, nom proche, même département si possible. */
 export function matchFirm(g: Pick<CompanyGroup, "company" | "postalCode">, firms: Firm[]): Firm | null {
   const n = normName(g.company);
+  if (!n) return null;
   const close = firms.filter((f) => f.active && /^\d{9}$/.test(f.siren) && (normName(f.name) === n || normName(f.name).startsWith(n) || n.startsWith(normName(f.name))));
   if (!close.length) return null;
   return close.find((f) => g.postalCode && dept(f.postalCode) === dept(g.postalCode)) || close[0];
@@ -151,7 +152,7 @@ export const inTargetSize = (f: Pick<Firm, "headcountCode" | "category">): boole
 const volumeLevel = (n: number) => (n >= 4 ? 3 : n >= 2 ? 2 : 1);
 
 /** Fiche CRM à partir des offres et du registre. Tout ce qui y figure est un fait sourcé. */
-export function prospectFromDiscovery(g: CompanyGroup, firm: Firm | null, today: string): Partial<Prospect> {
+export function prospectFromDiscovery(g: CompanyGroup, firm: Firm | null, today: string, origin: "france_travail" | "web" = "france_travail"): Partial<Prospect> {
   const offers = [...g.offers].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   const latest = offers[0];
   const titles = [...new Set(offers.map((o) => o.title).filter(Boolean))].slice(0, 5).join(" ; ");
@@ -176,7 +177,7 @@ export function prospectFromDiscovery(g: CompanyGroup, firm: Firm | null, today:
     decisionName: boss?.name || "",
     decisionTitle: boss?.role || "",
     decisionVerified: !!boss,
-    signal: `${offers.length} offre${offers.length > 1 ? "s" : ""} commerciale${offers.length > 1 ? "s" : ""} publiée${offers.length > 1 ? "s" : ""} sur France Travail (dernière : ${latest.title})`,
+    signal: `${offers.length} offre${offers.length > 1 ? "s" : ""} commerciale${offers.length > 1 ? "s" : ""} publiée${offers.length > 1 ? "s" : ""}${origin === "france_travail" ? " sur France Travail" : ""} (dernière : ${latest.title})`,
     signalSource: latest.url,
     signalDate: latest.publishedAt,
     crit,
@@ -185,10 +186,68 @@ export function prospectFromDiscovery(g: CompanyGroup, firm: Firm | null, today:
     city: firm?.city || g.city,
     headcount: firm ? HEADCOUNT[firm.headcountCode] || "non diffusé" : "",
     naf: firm?.naf || "",
-    origin: "france_travail",
+    origin,
     researchStatus: "à rechercher",
     research: { registry, offers: offers.slice(0, 10).map((o) => ({ title: o.title, url: o.url, date: o.publishedAt, city: o.city })) },
   };
 }
 
 const titleCase = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/(^|[\s'-])([a-zà-ÿ])/g, (_, a: string, b: string) => a + b.toUpperCase()) : s);
+
+// --- Détection par recherche web (sans compte France Travail) -------------------------------------
+
+export const SAVE_OFFERS = "enregistrer_offres";
+
+/** Un thème par jour pour varier les résultats sans multiplier les recherches. */
+export const WEB_THEMES = [
+  "SDR ou BDR (prospection, rendez-vous)",
+  "commercial terrain ou chargé d'affaires",
+  "business developer ou account executive en PME",
+  "technico-commercial ou ingénieur commercial",
+  "commercial sédentaire ou conseiller commercial B2B",
+] as const;
+export const themeOf = (isoDay: string): string => WEB_THEMES[Math.floor(new Date(isoDay + "T12:00:00Z").getTime() / 864e5) % WEB_THEMES.length];
+
+export const offersSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    offres: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          entreprise: { type: "string", description: "Nom de l'entreprise qui recrute (jamais une agence d'intérim ou un cabinet qui recrute pour un client)" },
+          poste: { type: "string" },
+          ville: { type: "string" },
+          date: { type: "string", description: "Date de publication AAAA-MM-JJ, ou chaîne vide" },
+          url: { type: "string", description: "Adresse de l'annonce telle qu'elle apparaît dans les résultats" },
+        },
+        required: ["entreprise", "poste", "ville", "date", "url"],
+      },
+    },
+  },
+  required: ["offres"],
+} as const;
+
+export function webDiscoveryPrompt(today: string, want: number, exclude: string[]): string {
+  return `Nous sommes le ${today}. Trouve des annonces d'emploi publiques, publiées en France depuis moins de 15 jours, pour des postes commerciaux : ${themeOf(today)}.
+Cible : PME françaises de 10 à 250 salariés qui recrutent elles-mêmes. Écarte les agences d'intérim, les cabinets de recrutement, les grands groupes et les annonces sans nom d'entreprise.
+Utilise uniquement les résultats de recherche (job boards, pages carrières, Welcome to the Jungle, Indeed, HelloWork, APEC, France Travail…). Ne lis pas les pages.
+${exclude.length ? `Ignore ces entreprises déjà connues : ${exclude.slice(0, 60).join(", ")}.\n` : ""}Vise ${want * 2} entreprises différentes, une ligne par annonce, avec l'adresse exacte de l'annonce. N'invente rien : pas d'annonce sans adresse.
+Puis appelle l'outil ${SAVE_OFFERS} une seule fois.`;
+}
+
+/** Sortie de l'agent -> offres au même format que France Travail (l'adresse de l'annonce sert d'identifiant). */
+export function offersFromWeb(raw: unknown, today: string): JobOffer[] {
+  const list = Array.isArray(obj(raw).offres) ? (obj(raw).offres as unknown[]) : [];
+  const out: JobOffer[] = [];
+  for (const x of list.map(obj)) {
+    const company = str(x.entreprise), url = str(x.url);
+    if (!company || !/^https?:\/\//i.test(url) || out.some((o) => o.id === url)) continue;
+    const date = /^\d{4}-\d{2}-\d{2}/.test(str(x.date)) ? str(x.date).slice(0, 10) : today;
+    out.push({ id: url, title: str(x.poste).slice(0, 160), company: company.slice(0, 160), companyUrl: "", city: str(x.ville).slice(0, 80), postalCode: "", rome: "", contract: "", publishedAt: date, url, excerpt: "", headcountLabel: "" });
+  }
+  return out;
+}

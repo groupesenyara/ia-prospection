@@ -53,12 +53,26 @@ npm run build
 
 Chaque jour de semaine à 5 h UTC (`/api/cron/prospect`), ou à la demande depuis l'écran CRM (« Lancer l’agent maintenant », Yannis uniquement) :
 
-1. **Détection** : lecture des offres commerciales publiées depuis 7 jours sur France Travail (API officielle, métiers ROME D1401 à D1408). Les agences d'intérim et les offres « pour le compte d'un client » sont écartées.
+1. **Détection** des annonces commerciales récentes :
+   - **par défaut, par recherche web** : un seul appel par jour (4 recherches, aucune page lue, un thème différent chaque jour : SDR/BDR, terrain, business developer, technico-commercial, sédentaire B2B) ;
+   - **ou par l'API France Travail** si `FRANCE_TRAVAIL_CLIENT_ID` et `FRANCE_TRAVAIL_CLIENT_SECRET` sont renseignés (gratuite et plus exhaustive, métiers ROME D1401 à D1408).
+   
+   Dans les deux cas, les agences d'intérim, les cabinets et les annonces « pour le compte d'un client » sont écartés.
 2. **Fiche légale** : rapprochement avec le registre public des entreprises (API Recherche d'entreprises de l'État) : SIREN, activité, effectif et dirigeants. Seules les **PME de 10 à 249 salariés** sont retenues, et une entreprise n'est créée qu'une fois par SIREN.
 3. **Recherche web par l'IA** (Claude, recherche et lecture de pages faites par Anthropic) : site officiel, coordonnées publiques (standard, e-mails génériques et nominatifs publiés), décideurs, faits récents, signaux d'achat, angles d'approche, qualification, puis une **première approche personnalisée** (e-mail, LinkedIn, script d'appel) en brouillon à valider.
 4. **Rien n'est envoyé.** Les fiches arrivent en « Entreprise identifiée », et les brouillons attendent la validation de Yannis.
 
-Plafond : `RESEARCH_DAILY_LIMIT` fiches par jour (10 par défaut), partagé avec le bouton « Rechercher avec l’IA » de la fiche. Le coût réel de chaque recherche (recherches web, pages lues, jetons) est affiché dans le dossier.
+Plafond : `RESEARCH_DAILY_LIMIT` fiches par jour (10 par défaut), partagé avec le bouton « Rechercher avec l’IA » de la fiche.
+
+**Coût** (modèle par défaut `RESEARCH_MODEL=claude-haiku-5-5`, à 0,10 $ / 0,50 $ par million de jetons, plus 0,01 $ par recherche web) :
+
+| Étape | Limites | Coût estimé |
+|---|---|---|
+| Détection web (1 fois par jour) | 4 recherches, 0 page lue | ~0,05 $ |
+| Recherche d'une entreprise | 3 recherches, 3 pages de 5 000 jetons au plus | ~0,03 à 0,05 $ |
+| **Journée de 10 fiches** | | **~0,40 à 0,60 $** |
+
+Le registre des entreprises et France Travail sont gratuits. Le coût estimé de chaque dossier et de chaque passage de l'agent est affiché dans l'interface. La rédaction à la demande (« Rédiger avec Claude ») reste sur `ANTHROPIC_MODEL`.
 
 Le CRM s'exporte en CSV (bouton « Exporter ») avec les coordonnées, leurs sources, le signal, le résumé et les angles.
 

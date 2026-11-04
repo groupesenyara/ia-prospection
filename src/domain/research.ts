@@ -88,7 +88,7 @@ ${RULES}
 FAITS PRODUIT CONFIRMÉS
 ${productFacts.length ? productFacts.map((f) => "- " + f).join("\n") : "- Aucun fait confirmé : décris seulement SwipSales comme une plateforme dédiée au recrutement commercial."}
 
-Fais tes recherches (6 recherches et 8 pages au plus), puis appelle l'outil ${SAVE_TOOL} une seule fois avec la fiche complète. Champs inconnus : chaîne ou liste vide.`;
+Sois économe : 3 recherches et 3 pages au plus (commence par le site officiel : page Contact ou Mentions légales, puis Équipe ou Carrières), puis appelle l'outil ${SAVE_TOOL} une seule fois avec la fiche complète. Champs inconnus : chaîne ou liste vide.`;
 }
 
 // --- Contrôle de la sortie -----------------------------------------------------------------------

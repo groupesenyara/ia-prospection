@@ -3,19 +3,21 @@ import type { BetaMessage } from "@anthropic-ai/sdk/resources/beta/messages/mess
 import type { Firm, JobOffer } from "../../src/domain/discovery.js";
 import type { Prospect } from "../../src/domain/types.js";
 import { fromRow } from "../../src/lib/mapping.js";
-import { runResearchAgent, tools, type MessagesApi } from "./agent.js";
+import { estimateUsd, runAgent, tools, type AgentTask, type MessagesApi } from "./agent.js";
 import { discover, enrichPending, type Deps, type Store } from "./prospecting.js";
 import { findFirms, salesOffers } from "./sources.js";
 
 const msg = (stop: string, content: unknown[], usage: Record<string, unknown> = {}): BetaMessage =>
   ({ stop_reason: stop, content, usage: { input_tokens: 100, output_tokens: 10, server_tool_use: { web_search_requests: 1, web_fetch_requests: 2 }, ...usage } }) as unknown as BetaMessage;
 
+const task: AgentTask = { prompt: "prompt", saveTool: "enregistrer_fiche", saveSchema: { type: "object" }, saveDescription: "", searches: 3, fetches: 3 };
+
 describe("agent de recherche", () => {
   it("reprend après pause_turn puis récupère la fiche enregistrée", async () => {
     const create = vi.fn()
       .mockResolvedValueOnce(msg("pause_turn", [{ type: "server_tool_use", id: "s1", name: "web_search", input: { query: "acme" } }]))
       .mockResolvedValueOnce(msg("tool_use", [{ type: "tool_use", id: "t1", name: "enregistrer_fiche", input: { resume: "ok" } }]));
-    const r = await runResearchAgent({ create } as MessagesApi, "claude-sonnet-5-5", "prompt");
+    const r = await runAgent({ create } as MessagesApi, "claude-sonnet-5-5", task);
     expect(r).toMatchObject({ raw: { resume: "ok" }, tokensIn: 200, tokensOut: 20, searches: 2, fetches: 4 });
     const body = create.mock.calls[1][0];
     expect(body.messages.at(-1).role).toBe("assistant"); // reprise : pas de message « continue » ajouté
@@ -23,13 +25,22 @@ describe("agent de recherche", () => {
   });
   it("relance une fois si l'agent répond sans enregistrer, puis abandonne proprement", async () => {
     const create = vi.fn().mockResolvedValue(msg("end_turn", [{ type: "text", text: "Voici ce que j'ai trouvé" }]));
-    const r = await runResearchAgent({ create } as MessagesApi, "m", "prompt");
+    const r = await runAgent({ create } as MessagesApi, "claude-haiku-5-5", task);
     expect(r.raw).toBeNull();
     expect(create).toHaveBeenCalledTimes(2);
   });
-  it("n'ouvre jamais les réseaux sociaux", () => {
-    const fetchTool = tools().find((t) => "name" in t && t.name === "web_fetch") as { blocked_domains: string[] };
+  it("n'ouvre jamais les réseaux sociaux ; outils et repli adaptés au modèle", async () => {
+    const fetchTool = tools("claude-haiku-5-5", task).find((t) => "name" in t && t.name === "web_fetch") as { blocked_domains: string[]; type: string };
     expect(fetchTool.blocked_domains).toContain("linkedin.com");
+    expect(fetchTool.type).toBe("web_fetch_20250910");
+    expect(tools("claude-sonnet-5-5", task).map((t) => ("type" in t ? t.type : "custom"))).toEqual(["web_search_20260209", "web_fetch_20260209", "custom"]);
+    expect(tools("claude-haiku-5-5", { ...task, fetches: 0 })).toHaveLength(2); // détection : pas de lecture de page
+    const create = vi.fn().mockResolvedValue(msg("tool_use", [{ type: "tool_use", id: "t", name: "enregistrer_fiche", input: {} }]));
+    await runAgent({ create } as MessagesApi, "claude-haiku-5-5", task);
+    expect(create.mock.calls[0][0].fallbacks).toBeUndefined(); // Haiku : pas de repli serveur
+  });
+  it("estime le coût : Haiku 5.5 et 0,01 $ par recherche", () => {
+    expect(estimateUsd("claude-haiku-5-5", { tokensIn: 40000, tokensOut: 3000, searches: 3 })).toBe(0.036);
   });
 });
 
@@ -58,7 +69,7 @@ function memoryStore(rows: Record<string, unknown>[] = []) {
   const store: Store = {
     known: async () => rows.map((r) => ({ id: r.id as string, company: r.company as string, website: (r.website as string) || "", siren: (r.siren as string) || null })),
     insertProspect: async (p) => { const id = `p${rows.length + 1}`; rows.push({ ...p, id }); return id; },
-    insertSignals: async (id, offers) => { signals.push(...offers.map((o) => ({ id, ext: o.id }))); },
+    insertSignals: async (id, offers, source) => { signals.push(...offers.map((o) => ({ id, ext: o.id, source }))); },
     researchUsedToday: async () => usage.length,
     pending: async (n) => rows.filter((r) => r.researchStatus === "à rechercher" && !r.optOut).slice(0, n) as unknown as Prospect[],
     get: async (id) => (rows.find((r) => r.id === id) as unknown as Prospect) || null,
@@ -75,7 +86,7 @@ describe("orchestration", () => {
   it("crée les fiches des PME cibles, une seule fois par SIREN, avec leurs offres", async () => {
     const m = memoryStore([{ id: "p0", company: "Déjà Là", siren: "000000000" }]);
     const registry: Record<string, Firm[]> = { "Acme": [firm("123456789", "ACME")], "Gros Groupe": [firm("222222222", "GROS GROUPE", "41")], "DLA Commerce": [firm("000000000", "DLA COMMERCE")], "Inconnue": [] };
-    const d: Deps = { store: m.store, today: "2026-11-04", offers: async () => [offer("1", "Acme"), offer("2", "Acme"), offer("3", "Gros Groupe"), offer("4", "DLA Commerce"), offer("5", "Inconnue")], firms: async (n) => registry[n] || [], research: null, dailyLimit: 10 };
+    const d: Deps = { store: m.store, today: "2026-11-04", offers: async () => ({ origin: "france_travail", offers: [offer("1", "Acme"), offer("2", "Acme"), offer("3", "Gros Groupe"), offer("4", "DLA Commerce"), offer("5", "Inconnue")] }), firms: async (n) => registry[n] || [], research: null, dailyLimit: 10 };
     const r = await discover(d, 10);
     expect(r.added).toEqual(["Acme"]);
     expect(r.skipped).toEqual({ "hors cible (taille)": 1, "déjà en base": 1, "introuvable au registre": 1 });
@@ -85,7 +96,7 @@ describe("orchestration", () => {
 
   it("sans compte France Travail, la détection est sautée avec un message clair", async () => {
     const r = await discover({ store: memoryStore().store, today: "x", offers: null, firms: async () => [], research: null, dailyLimit: 10 }, 10);
-    expect(r.note).toMatch(/FRANCE_TRAVAIL_CLIENT_ID/);
+    expect(r.note).toMatch(/Détection désactivée/);
   });
 
   it("recherche dans la limite du plafond quotidien et trace l'échec", async () => {
@@ -104,5 +115,18 @@ describe("orchestration", () => {
     expect(m.rows[1]).toMatchObject({ researchStatus: "échec" });
     expect(m.rows[2].researchStatus).toBe("à rechercher"); // plafond de 2 atteint
     expect(m.usage).toEqual(["recherche", "recherche"]);
+  });
+
+  it("sans France Travail : détection par recherche web, avec les mêmes contrôles (registre, taille, doublons)", async () => {
+    const m = memoryStore([{ id: "p0", company: "Connue" }]);
+    const offers = vi.fn(async ({ exclude }: { want: number; exclude: string[] }) => {
+      expect(exclude).toEqual(["Connue"]);
+      return { origin: "web" as const, offers: [offer("https://wttj/acme-sdr", "Acme")], usage: { raw: {}, tokensIn: 8000, tokensOut: 800, searches: 4, fetches: 0, stop: "tool_use" }, usd: 0.041 };
+    });
+    const r = await discover({ store: m.store, today: "2026-11-04", offers, firms: async () => [firm("123456789", "ACME")], research: null, dailyLimit: 10 }, 5);
+    expect(r).toMatchObject({ origin: "web", added: ["Acme"], usd: 0.041 });
+    expect(m.rows[1]).toMatchObject({ origin: "web", signalSource: "https://ft/https://wttj/acme-sdr" });
+    expect(m.signals).toEqual([{ id: "p2", ext: "https://wttj/acme-sdr", source: "web" }]);
+    expect(m.usage).toEqual(["detection"]);
   });
 });

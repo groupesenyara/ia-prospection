@@ -34,13 +34,13 @@ export function Today({ data, open }: P) {
   );
 }
 
-type ProspectingReport = { at: string; seconds: number; discovery: { offers: number; companies: number; added: string[]; skipped: Record<string, number>; note?: string }; enrichment: { done: string[]; failed: string[]; left: number; note?: string } };
+type ProspectingReport = { at: string; seconds: number; discovery: { origin?: string; offers: number; companies: number; added: string[]; skipped: Record<string, number>; usd?: number; note?: string }; enrichment: { done: string[]; failed: string[]; left: number; usd?: number; note?: string } };
 
 export function Crm({ data, open, notify, isOwner }: P) {
   const [q, setQ] = useState(""); const [seg, setSeg] = useState("all"); const [rs, setRs] = useState("all"); const [busy, setBusy] = useState(false);
   const list = data.prospects.filter((p) =>
     (seg === "all" || (p.segment || "") === seg) &&
-    (rs === "all" || (rs === "agent" ? p.origin === "france_travail" : rs === "contact" ? !!(p.email || p.phone) : (p.researchStatus || "") === rs)) &&
+    (rs === "all" || (rs === "agent" ? !!p.origin && p.origin !== "manuel" : rs === "contact" ? !!(p.email || p.phone) : (p.researchStatus || "") === rs)) &&
     (!q || `${p.company} ${p.roles} ${p.sector} ${p.city || ""} ${p.decisionName}`.toLowerCase().includes(q.toLowerCase())));
   const report = data.settings.prospecting_report as ProspectingReport | undefined;
   async function runAgent() {
@@ -58,7 +58,7 @@ export function Crm({ data, open, notify, isOwner }: P) {
         </div>
       </div>
       {report && (
-        <div className="notice info small"><b>Agent de prospection · {frDate(report.at.slice(0, 10))}</b> — {report.discovery.note || `${report.discovery.offers} offres commerciales lues, ${report.discovery.companies} entreprises, ${report.discovery.added.length} ajoutée(s)${Object.keys(report.discovery.skipped).length ? ` (écartées : ${Object.entries(report.discovery.skipped).map(([k, v]) => `${v} ${k}`).join(", ")})` : ""}`}. Recherche : {report.enrichment.note || `${report.enrichment.done.length} dossier(s) complété(s), ${report.enrichment.failed.length} en échec`}.</div>
+        <div className="notice info small"><b>Agent de prospection · {frDate(report.at.slice(0, 10))}</b> — {report.discovery.note || `${report.discovery.offers} annonces commerciales lues (${report.discovery.origin === "web" ? "recherche web" : "France Travail"}), ${report.discovery.companies} entreprises, ${report.discovery.added.length} ajoutée(s)${Object.keys(report.discovery.skipped).length ? ` (écartées : ${Object.entries(report.discovery.skipped).map(([k, v]) => `${v} ${k}`).join(", ")})` : ""}`}. Recherche : {report.enrichment.note || `${report.enrichment.done.length} dossier(s) complété(s), ${report.enrichment.failed.length} en échec`}. Coût estimé : {((report.discovery.usd || 0) + (report.enrichment.usd || 0)).toLocaleString("fr-FR")} $.</div>
       )}
       <div className="fgrid">
         <label className="f">Rechercher<input type="search" value={q} onChange={(e) => setQ(e.target.value)} /></label>

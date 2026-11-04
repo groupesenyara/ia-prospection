@@ -38,7 +38,7 @@ export function ResearchPanel({ p, data, notify }: { p: Prospect; data: Data; no
       {!!r.offers?.length && (<><h4>Offres commerciales publiées</h4><ul>{r.offers.map((o, i) => <li key={i}>{frDate(o.date)} · <a href={o.url} target="_blank" rel="noreferrer">{o.title}</a> · {o.city}</li>)}</ul></>)}
       {!!r.angles?.length && (<><h4>Angles d’approche</h4><ul>{r.angles.map((a, i) => <li key={i}><b>{a.angle}</b>{a.basis ? <span className="muted"> — appui : {a.basis}</span> : null}</li>)}</ul></>)}
       {r.gaps && <p className="small muted">Limites : {r.gaps}</p>}
-      {r.cost && <p className="small muted">{r.cost.searches} recherches, {r.cost.fetches} pages lues, {Math.round((r.cost.tokensIn + r.cost.tokensOut) / 1000)} k jetons.{r.rejected ? ` ${r.rejected} élément(s) écarté(s) faute de source ou parce que personnels.` : ""}</p>}
+      {r.cost && <p className="small muted">{r.cost.searches} recherches, {r.cost.fetches} pages lues, {Math.round((r.cost.tokensIn + r.cost.tokensOut) / 1000)} k jetons{r.cost.usd !== undefined ? `, environ ${r.cost.usd.toLocaleString("fr-FR")} $` : ""}.{r.rejected ? ` ${r.rejected} élément(s) écarté(s) faute de source ou parce que personnels.` : ""}</p>}
       {!r.at && !r.registry && !r.offers && <p className="small muted">Pas encore de dossier. La recherche ne garde que des informations publiques, avec leur source.</p>}
     </div>
   );

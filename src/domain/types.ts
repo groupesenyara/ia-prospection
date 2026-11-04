@@ -88,7 +88,7 @@ export interface ResearchDossier {
   registry?: { siren: string; name: string; naf: string; headcount: string; city: string; created: string; url: string; officers: { name: string; role: string }[] };
   offers?: { title: string; url: string; date: string; city: string }[];
   rejected?: number;
-  cost?: { tokensIn: number; tokensOut: number; searches: number; fetches: number };
+  cost?: { tokensIn: number; tokensOut: number; searches: number; fetches: number; usd?: number };
 }
 
 export type EventType =

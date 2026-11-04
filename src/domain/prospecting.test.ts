@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupByCompany, inTargetSize, isStaffing, matchFirm, parseFirms, parseFranceTravail, pickCandidates, prospectFromDiscovery } from "./discovery.js";
+import { groupByCompany, inTargetSize, isStaffing, matchFirm, offersFromWeb, parseFirms, parseFranceTravail, pickCandidates, prospectFromDiscovery, themeOf, webDiscoveryPrompt, WEB_THEMES } from "./discovery.js";
 import { prospectFacts } from "./prompts.js";
 import { normalizePhone, normalizeResearch, researchPrompt } from "./research.js";
 import type { Prospect } from "./types.js";
@@ -138,5 +138,27 @@ describe("contrôle de la recherche IA", () => {
     const prompt = researchPrompt(prospect(), ["Plateforme réservée aux commerciaux"], "Yannis");
     expect(prompt).toContain("N'invente et ne reconstitue JAMAIS une adresse e-mail");
     expect(prompt).toContain("Claire Martin, Président");
+  });
+});
+
+describe("détection par recherche web", () => {
+  it("garde les annonces avec entreprise et adresse, sans doublon ; date du jour à défaut", () => {
+    const offers = offersFromWeb({ offres: [
+      { entreprise: "Acme", poste: "SDR", ville: "Lyon", date: "2026-11-01", url: "https://www.welcometothejungle.com/fr/companies/acme/jobs/sdr" },
+      { entreprise: "Acme", poste: "SDR", ville: "Lyon", date: "", url: "https://www.welcometothejungle.com/fr/companies/acme/jobs/sdr" },
+      { entreprise: "", poste: "Commercial", ville: "Paris", date: "", url: "https://x.fr/1" },
+      { entreprise: "Sans Lien", poste: "Commercial", ville: "Paris", date: "", url: "" },
+      { entreprise: "Beta", poste: "Commercial terrain", ville: "Nantes", date: "", url: "https://www.hellowork.com/fr-fr/emplois/1.html" },
+    ] }, "2026-11-04");
+    expect(offers.map((o) => [o.company, o.publishedAt])).toEqual([["Acme", "2026-11-01"], ["Beta", "2026-11-04"]]);
+    const p = prospectFromDiscovery(groupByCompany(offers)[0], null, "2026-11-04", "web");
+    expect(p.signal).toBe("1 offre commerciale publiée (dernière : SDR)");
+    expect(p.origin).toBe("web");
+  });
+  it("change de thème chaque jour et exclut les entreprises connues", () => {
+    expect(new Set(["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06"].map(themeOf)).size).toBe(WEB_THEMES.length);
+    const prompt = webDiscoveryPrompt("2026-11-04", 10, ["Connue SA"]);
+    expect(prompt).toContain("Ignore ces entreprises déjà connues : Connue SA");
+    expect(prompt).toContain("Ne lis pas les pages");
   });
 });
