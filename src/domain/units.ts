@@ -51,6 +51,7 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
     offers: [
       "Utilisation professionnelle de l'IA", "Création et utilisation d'agents IA", "Automatisation des processus",
       "Développement des compétences commerciales : prospection et négociation", "Nouveaux usages numériques", "Accompagnement de la transformation des entreprises",
+      "Catalogue : AI Workbench Pro™, Prospection / vente B2B, Marketing digital, Cybersécurité (avec Samuel Desseaux, Erythix)", "Sur le site du client ou à distance",
     ],
     targets: ["TPE et PME", "Entreprises qui veulent former leurs collaborateurs", "Organismes de formation"],
     buyers: ["Dirigeant", "DRH", "Responsable formation", "Directeur commercial"],
@@ -78,8 +79,10 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
       "Site vitrine, site professionnel, e-commerce, refonte, optimisation et maintenance",
       "Application web ou mobile, logiciel métier, outil professionnel sur mesure, plateforme SaaS, espace client ou portail",
       "Agents IA, automatisation des tâches et de la prospection, intégrations API, connexion entre logiciels, digitalisation des processus",
+      "Cartes et plaques NFC avis Google personnalisées, installées et testées sur place ; cartes de menu et supports de communication",
+      "Régie : mise à disposition d'un développeur",
     ],
-    targets: ["Artisans et commerçants", "TPE et PME", "Entreprises locales", "Industries", "Cabinets professionnels", "Organismes de formation", "Startups", "Franchises", "Entreprises de services"],
+    targets: ["Artisans et commerçants", "TPE et PME", "Entreprises locales", "Industries", "Cabinets professionnels", "Organismes de formation", "Startups", "Franchises", "Entreprises de services", "Zone : Hauts-de-France uniquement"],
     buyers: ["Dirigeant", "Responsable des opérations", "Responsable marketing ou communication", "DSI ou responsable informatique"],
     signals: [
       "Pas de site internet, ou site vieillissant (design daté, copyright ancien, pas de HTTPS)", "Site non adapté au mobile", "Faible présence numérique",
@@ -108,6 +111,15 @@ export function statusOf(unit: UnitId, stage: string): "ouverte" | "gagnée" | "
   return u.wonStages.includes(stage) ? "gagnée" : u.lostStages.includes(stage) ? "perdue" : "ouverte";
 }
 
+/** Règles d'utilisation de la base de connaissances commerciales (document de Yannis du 2026-11-05), communes aux pôles. */
+export const COMMERCIAL_RULES = [
+  "Utilise UNIQUEMENT les prix, références et faits confirmés. Si une information manque, écris « à confirmer avec Yannis » : n'invente jamais un prix, un client, un chiffre ou un résultat.",
+  "Les prix sont des fourchettes ou des prix « à partir de ». Le prix final est fixé au devis, validé par Yannis avant envoi.",
+  "Ne cite une référence client que pour le type de prestation réellement livré, et une réalisation en cours comme « en cours ».",
+  "Ne promets jamais de résultat chiffré (nombre d'avis, classement Google, chiffre d'affaires, nombre de recrutements).",
+  "Adapte l'offre au prospect : une seule offre principale par message, une offre complémentaire au maximum, et seulement parmi les ventes croisées autorisées.",
+];
+
 /** Bloc de consignes d'un pôle, injecté dans les prompts de rédaction et de qualification. */
 export function playbookText(unit: UnitId, confirmedFacts: string[]): string {
   const u = UNITS[unit];
@@ -116,6 +128,8 @@ ${u.pitch}
 Offres (descriptif, sans prix) : ${u.offers.join(" ; ")}
 Interlocuteurs à privilégier : ${u.buyers.join(", ")}
 À comprendre avant de proposer un rendez-vous : ${u.qualify.join(" ")}
+Règles commerciales :
+${COMMERCIAL_RULES.map((f) => "- " + f).join("\n")}
 Interdits propres au pôle :
 ${u.forbidden.map((f) => "- " + f).join("\n")}
 FAITS CONFIRMÉS PAR YANNIS (seules affirmations autorisées sur l'offre)

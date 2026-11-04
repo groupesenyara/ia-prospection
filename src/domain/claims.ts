@@ -24,7 +24,7 @@ const RULES: Rule[] = [
   { rule: "financement", hint: "Financement ou éligibilité non confirmé", re: /\b(opco|cpf|fne|prise en charge|financ[ée]\w*|financement\w*|[ée]ligib\w+|rembours\w+|z[ée]ro reste [àa] charge)\b/gi, kinds: ["certification", "offre", "tarif"], key: stem },
   { rule: "prix", hint: "Prix non confirmé", re: /\d[\d\s.,]*\s?(€|euros?\b|k€)|\b(tarif|prix)\s+(de\s+)?\d[\d\s.,]*/gi, kinds: ["tarif"], key: digits },
   { rule: "référence", hint: "Référence ou volume client non confirmé", re: /\b(nos clients?|nous avons (accompagn|aid|form|travaill)\w*|ils nous font confiance|d[ée]j[àa] \d+|plus de \d+ (entreprises|clients|stagiaires|apprenants|utilisateurs|candidats))/gi, kinds: ["reference"], key: (m) => digits(m) },
-  { rule: "résultat", hint: "Chiffre ou promesse de résultat non confirmé", re: /\d+[.,]?\d*\s?%|\b(garanti\w*|assur[ée]ment|sans risque|r[ée]sultats? imm[ée]diats?|doublez|triplez|multipliez)\b/gi, kinds: ["argument"], key: (m) => (/\d/.test(m) ? digits(m) : stem(m)) },
+  { rule: "résultat", hint: "Chiffre ou promesse de résultat non confirmé", re: /\d+[.,]?\d*\s?%|\b(garanti\w*|assur[ée]ment|sans risque|r[ée]sultats? imm[ée]diats?|doublez|triplez|multipliez)\b/gi, kinds: ["argument", "tarif"], key: (m) => (/\d/.test(m) ? digits(m) : stem(m)) },
   { rule: "urgence", hint: "Urgence ou rareté artificielle", re: /\b(derni[èe]res? places?|offre limit[ée]e|plus que \d+ places?|expire (ce soir|demain|aujourd'hui))\b/gi, kinds: [], key: () => "" },
 ];
 
