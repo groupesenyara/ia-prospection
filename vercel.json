@@ -1,3 +1,10 @@
 {
-  "crons": [{ "path": "/api/cron/daily", "schedule": "0 6 * * 1-5" }]
+  "crons": [
+    { "path": "/api/cron/prospect", "schedule": "0 5 * * 1-5" },
+    { "path": "/api/cron/daily", "schedule": "0 6 * * 1-5" }
+  ],
+  "functions": {
+    "api/cron/prospect.ts": { "maxDuration": 300 },
+    "api/research.ts": { "maxDuration": 300 }
+  }
 }

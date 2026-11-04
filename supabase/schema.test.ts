@@ -29,6 +29,7 @@ beforeAll(async () => {
   `);
   await db.exec(readFileSync(new URL("./migrations/20261102125807_init.sql", import.meta.url), "utf8"));
   await db.exec(readFileSync(new URL("./migrations/20261102125942_hardening.sql", import.meta.url), "utf8"));
+  await db.exec(readFileSync(new URL("./migrations/20261104090000_prospecting.sql", import.meta.url), "utf8"));
   await db.exec(`
     grant usage on schema public to authenticated, anon;
     grant select, insert, update, delete on all tables in schema public to authenticated;
@@ -96,5 +97,17 @@ describe("migration et règles", () => {
     await as(EDITOR, `insert into feedback (title) values ('Bug')`);
     await as(EDITOR, `delete from feedback where title = 'Bug'`);
     expect((await as(OWNER, `select count(*)::int as n from feedback`)).rows[0].n).toBe(1);
+  });
+
+  it("agent de prospection : un SIREN unique, pas de recherche en opposition, signaux réservés à l'équipe", async () => {
+    const id = (await as(EDITOR, `insert into prospects (company, source, siren, origin, research_status) values ('Siren Co', 'https://ft', '123456789', 'france_travail', 'à rechercher') returning id`)).rows[0].id;
+    await expect(as(EDITOR, `insert into prospects (company, source, siren) values ('Siren Bis', 'x', '123456789')`)).rejects.toThrow(/prospects_siren_key/);
+    await expect(as(EDITOR, `insert into prospects (company, source, siren) values ('Mauvais', 'x', '12345')`)).rejects.toThrow(/siren_check/);
+    await expect(as(EDITOR, `update prospects set opt_out = true where id = $1`, [id])).rejects.toThrow(/pas_de_recherche_si_opposition/);
+    await as(EDITOR, `update prospects set opt_out = true, research_status = '' where id = $1`, [id]);
+    await as(EDITOR, `insert into job_signals (source, external_id, prospect_id, company, title) values ('france_travail', 'o1', $1, 'Siren Co', 'SDR')`, [id]);
+    await expect(as(EDITOR, `insert into job_signals (source, external_id, company, title) values ('france_travail', 'o1', 'X', 'Y')`)).rejects.toThrow(/duplicate key/);
+    expect((await as(OUTSIDER, `select * from job_signals`)).rows).toHaveLength(0);
+    expect((await as(EDITOR, `select * from job_signals`)).rows).toHaveLength(1);
   });
 });

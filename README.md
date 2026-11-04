@@ -47,7 +47,28 @@ npm run build
 
 - Framework : Vite. Les fonctions de `api/` sont détectées automatiquement.
 - Variables : voir `.env.example`. `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` et `CRON_SECRET` ne vont **jamais** dans une variable `VITE_`.
-- La tâche quotidienne est déclarée dans `vercel.json` : du lundi au vendredi à 6 h UTC.
+- Les tâches sont déclarées dans `vercel.json` : l'agent de prospection à 5 h UTC et la préparation des envois à 6 h UTC, du lundi au vendredi. L'agent peut durer jusqu'à 5 minutes (`maxDuration: 300`, ce qui demande le Fluid Compute de Vercel, activé par défaut).
+
+## Agent de prospection
+
+Chaque jour de semaine à 5 h UTC (`/api/cron/prospect`), ou à la demande depuis l'écran CRM (« Lancer l’agent maintenant », Yannis uniquement) :
+
+1. **Détection** : lecture des offres commerciales publiées depuis 7 jours sur France Travail (API officielle, métiers ROME D1401 à D1408). Les agences d'intérim et les offres « pour le compte d'un client » sont écartées.
+2. **Fiche légale** : rapprochement avec le registre public des entreprises (API Recherche d'entreprises de l'État) : SIREN, activité, effectif et dirigeants. Seules les **PME de 10 à 249 salariés** sont retenues, et une entreprise n'est créée qu'une fois par SIREN.
+3. **Recherche web par l'IA** (Claude, recherche et lecture de pages faites par Anthropic) : site officiel, coordonnées publiques (standard, e-mails génériques et nominatifs publiés), décideurs, faits récents, signaux d'achat, angles d'approche, qualification, puis une **première approche personnalisée** (e-mail, LinkedIn, script d'appel) en brouillon à valider.
+4. **Rien n'est envoyé.** Les fiches arrivent en « Entreprise identifiée », et les brouillons attendent la validation de Yannis.
+
+Plafond : `RESEARCH_DAILY_LIMIT` fiches par jour (10 par défaut), partagé avec le bouton « Rechercher avec l’IA » de la fiche. Le coût réel de chaque recherche (recherches web, pages lues, jetons) est affiché dans le dossier.
+
+Le CRM s'exporte en CSV (bouton « Exporter ») avec les coordonnées, leurs sources, le signal, le résumé et les angles.
+
+### Cadre de collecte (RGPD, prospection B2B)
+
+- **Données publiques et professionnelles uniquement**, chacune avec l'adresse de la page où elle a été lue. Une coordonnée sans source est rejetée par le serveur, et la base refuse une coordonnée sans source (`coordonnees_sourcees`).
+- **Rien n'est deviné** : pas d'adresse reconstituée (prénom.nom@), pas de numéro déduit. Les adresses personnelles (gmail, hotmail, orange…) sont rejetées.
+- **Pas d'ouverture de LinkedIn, Facebook ou Instagram** par l'agent (conditions d'utilisation). L'adresse d'un profil peut être citée depuis un résultat de recherche.
+- **Information à la première prise de contact** : chaque e-mail cite la source de l'adresse et permet de refuser les relances. Une opposition passe la fiche en « Ne plus contacter » : plus aucune recherche ni aucun contact (règle portée par la base).
+- **Durée de conservation** : un prospect sans réponse ne doit pas être gardé plus de 3 ans après le dernier contact (recommandation CNIL). La purge reste à mettre en place.
 
 ## Architecture
 
@@ -58,7 +79,8 @@ src/domain/     Règles métier pures, testées : score, doublons, séquences de
 src/lib/        Client Supabase, conversion base <-> application, hook de données temps réel
 src/ui/         Interface React (espaces de pilotage, fiche entreprise)
 api/ai/         POST /api/ai/generate : rédaction (prompt construit côté serveur, plafond, journal d'usage)
-api/cron/       GET /api/cron/daily : prépare les envois du jour en « À valider » et le rapport. N'envoie rien.
+api/cron/       GET /api/cron/prospect : agent de prospection (5 h UTC). GET /api/cron/daily : prépare les envois du jour (6 h UTC). N'envoient rien.
+api/research.ts POST : recherche IA d'une fiche, ou lancement de l'agent par Yannis
 supabase/       Migration + tests de la migration sur Postgres (PGlite)
 scripts/        Import des données du prototype
 prototype/      Prototype complet (HTML) : référence fonctionnelle et visuelle pour les écrans à porter

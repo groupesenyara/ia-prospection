@@ -7,6 +7,7 @@ import { isSignificant, objectionCounts, perfBy } from "../domain/performance";
 import { contentSuggestions } from "../domain/suggestions";
 import type { Campaign, CampaignStep, ContentItem } from "../domain/types";
 import { canApproveContent, pendingValidation } from "../domain/validation";
+import { downloadCsv } from "../lib/csv";
 import { api } from "../lib/supabase";
 import type { Data } from "../lib/useData";
 import { Empty, Kpi, pct, ProspectItem } from "./common";
@@ -33,17 +34,41 @@ export function Today({ data, open }: P) {
   );
 }
 
-export function Crm({ data, open }: P) {
-  const [q, setQ] = useState(""); const [seg, setSeg] = useState("all");
-  const list = data.prospects.filter((p) => (seg === "all" || (p.segment || "") === seg) && (!q || `${p.company} ${p.roles} ${p.sector}`.toLowerCase().includes(q.toLowerCase())));
+type ProspectingReport = { at: string; seconds: number; discovery: { offers: number; companies: number; added: string[]; skipped: Record<string, number>; note?: string }; enrichment: { done: string[]; failed: string[]; left: number; note?: string } };
+
+export function Crm({ data, open, notify, isOwner }: P) {
+  const [q, setQ] = useState(""); const [seg, setSeg] = useState("all"); const [rs, setRs] = useState("all"); const [busy, setBusy] = useState(false);
+  const list = data.prospects.filter((p) =>
+    (seg === "all" || (p.segment || "") === seg) &&
+    (rs === "all" || (rs === "agent" ? p.origin === "france_travail" : rs === "contact" ? !!(p.email || p.phone) : (p.researchStatus || "") === rs)) &&
+    (!q || `${p.company} ${p.roles} ${p.sector} ${p.city || ""} ${p.decisionName}`.toLowerCase().includes(q.toLowerCase())));
+  const report = data.settings.prospecting_report as ProspectingReport | undefined;
+  async function runAgent() {
+    setBusy(true);
+    try { const r = await api<ProspectingReport>("/api/research", { run: true }); await data.reload(); notify(`Agent : ${r.discovery.added.length} entreprise(s) ajoutée(s), ${r.enrichment.done.length} dossier(s) complété(s)`); }
+    catch (e) { notify((e as Error).message); } finally { setBusy(false); }
+  }
   return (
     <section className="view">
-      <div className="row between"><h2>Prospection et CRM</h2><button className="btn primary" onClick={() => open(null)}>+ Ajouter une entreprise</button></div>
+      <div className="row between"><h2>Prospection et CRM</h2>
+        <div className="row">
+          <button className="btn" onClick={() => downloadCsv(list, `crm-swipsales-${today()}.csv`)} disabled={!list.length}>Exporter ({list.length}) en CSV</button>
+          {isOwner && <button className="btn" disabled={busy} onClick={runAgent}>{busy ? "Agent en cours (jusqu’à 5 min)…" : "Lancer l’agent maintenant"}</button>}
+          <button className="btn primary" onClick={() => open(null)}>+ Ajouter une entreprise</button>
+        </div>
+      </div>
+      {report && (
+        <div className="notice info small"><b>Agent de prospection · {frDate(report.at.slice(0, 10))}</b> — {report.discovery.note || `${report.discovery.offers} offres commerciales lues, ${report.discovery.companies} entreprises, ${report.discovery.added.length} ajoutée(s)${Object.keys(report.discovery.skipped).length ? ` (écartées : ${Object.entries(report.discovery.skipped).map(([k, v]) => `${v} ${k}`).join(", ")})` : ""}`}. Recherche : {report.enrichment.note || `${report.enrichment.done.length} dossier(s) complété(s), ${report.enrichment.failed.length} en échec`}.</div>
+      )}
       <div className="fgrid">
         <label className="f">Rechercher<input type="search" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <label className="f">Segment<select value={seg} onChange={(e) => setSeg(e.target.value)}><option value="all">Tous</option>{Object.entries(SEGMENT_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+        <label className="f">Dossier<select value={rs} onChange={(e) => setRs(e.target.value)}>
+          <option value="all">Tous</option><option value="agent">Trouvées par l’agent</option><option value="contact">Avec e-mail ou téléphone</option>
+          <option value="à rechercher">À rechercher</option><option value="fait">Recherche faite</option><option value="échec">Recherche en échec</option>
+        </select></label>
       </div>
-      <div className="panel"><div className="list">{list.length ? list.map((p) => <ProspectItem key={p.id} p={p} onOpen={open} />) : <Empty title="Aucune entreprise" text="Ajoutez une entreprise avec la source qui prouve son besoin." />}</div></div>
+      <div className="panel"><div className="list">{list.length ? list.map((p) => <ProspectItem key={p.id} p={p} onOpen={open} extra={<>{p.city && <span>{p.city}</span>}{p.researchStatus === "fait" && <span className="tag fact">Dossier sourcé</span>}{p.researchStatus === "à rechercher" && <span className="tag">À rechercher</span>}</>} />) : <Empty title="Aucune entreprise" text="Ajoutez une entreprise avec la source qui prouve son besoin, ou lancez l’agent." />}</div></div>
     </section>
   );
 }

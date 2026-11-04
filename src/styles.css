@@ -178,3 +178,7 @@ ul.clean{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:16px;align-items:start}
 @media (max-width:900px){.split{grid-template-columns:1fr}}
 .item.active{background:var(--accent-soft)}
+.dossier h4{margin:.9rem 0 .3rem;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.dossier ul{margin:0;padding-left:1.1rem;display:grid;gap:4px;font-size:.9rem}
+.dossier a{color:var(--accent);overflow-wrap:anywhere}
+.src-link{font-size:.75rem;color:var(--muted)!important}
