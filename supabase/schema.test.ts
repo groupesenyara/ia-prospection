@@ -29,7 +29,7 @@ beforeAll(async () => {
   `);
   await db.exec(readFileSync(new URL("./migrations/20261102125807_init.sql", import.meta.url), "utf8"));
   await db.exec(readFileSync(new URL("./migrations/20261102125942_hardening.sql", import.meta.url), "utf8"));
-  await db.exec(readFileSync(new URL("./migrations/20261104090000_prospecting.sql", import.meta.url), "utf8"));
+  await db.exec(readFileSync(new URL("./migrations/20261104134714_prospecting.sql", import.meta.url), "utf8"));
   await db.exec(`
     grant usage on schema public to authenticated, anon;
     grant select, insert, update, delete on all tables in schema public to authenticated;
