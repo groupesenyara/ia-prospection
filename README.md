@@ -118,6 +118,18 @@ Aucune protection n'est contournée : pas d'extraction de pages, pas de robot co
 
 ## Agent de prospection
 
+**Détection par pôle (gratuite)** : à chaque passage, l'agent ajoute pour chaque pôle jusqu'à `perUnit` nouvelles entreprises (20 par défaut), prises dans le **registre officiel des entreprises**. Il filtre les départements du jour, les activités (codes NAF) et les tailles visées par le pôle :
+- **Swipe Sales** : cabinets de recrutement, ESN, distribution et conseil B2B ;
+- **Amandis School** : PME de services de 20 à 249 salariés ;
+- **Groupe Senyara** : artisans, commerces, restaurants, garages, professions libérales.
+
+Les entreprises déjà en base (même SIREN) sont ignorées. Chaque fiche reçoit l'opportunité de son pôle.
+
+**Réglages** (écran CRM, réservé à Yannis) : nombre d'entreprises par pôle, départements (vide = toute la France, 3 départements par jour en rotation), pôles actifs.
+
+**Passages** : 3 par jour ouvré (5 h, 10 h et 15 h UTC), plus le bouton « Lancer l'agent maintenant ». La recherche IA approfondie est plafonnée par `RESEARCH_DAILY_LIMIT` (30 par jour par défaut, environ 0,04 $ chacune).
+
+
 Chaque jour de semaine à 5 h UTC (`/api/cron/prospect`), ou à la demande depuis l'écran CRM (« Lancer l’agent maintenant », Yannis uniquement) :
 
 1. **Détection** des annonces commerciales récentes :

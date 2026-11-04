@@ -1,7 +1,7 @@
 // Orchestration de l'agent de prospection : détection (France Travail + registre), puis recherche web par l'IA.
 // N'envoie rien : les fiches et les brouillons attendent la validation de Yannis.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { groupByCompany, inTargetSize, matchFirm, pickCandidates, prospectFromDiscovery, type Firm, type JobOffer } from "../../src/domain/discovery.js";
+import { departementsOf, groupByCompany, inTargetSize, matchFirm, pickCandidates, prospectFromDiscovery, prospectFromFirm, REGISTRY_TARGETS, rotate, type Firm, type JobOffer } from "../../src/domain/discovery.js";
 import { normalizeResearch, researchPrompt, type OpportunityDraft, type UnitFacts } from "../../src/domain/research.js";
 import type { UnitId } from "../../src/domain/units.js";
 import type { Prospect } from "../../src/domain/types.js";
@@ -30,6 +30,8 @@ export interface Deps {
   /** Offres commerciales récentes : France Travail (gratuit) si configuré, sinon recherche web par l'IA. */
   offers: ((ctx: { want: number; exclude: string[] }) => Promise<OfferBatch>) | null;
   firms(name: string): Promise<Firm[]>;
+  /** Registre officiel : une page d'entreprises d'un département pour une activité et des tailles. */
+  registry?: (q: { departement: string; naf: string; tranches: string[]; page: number }) => Promise<{ firms: Firm[]; totalPages: number }>;
   research: ((prompt: string) => Promise<AgentResult & { usd?: number }>) | null; // null : IA désactivée
   dailyLimit: number;
   deadline?: number; // horodatage au-delà duquel on ne lance plus de recherche
@@ -61,6 +63,40 @@ export async function discover(d: Deps, want: number): Promise<DiscoveryReport> 
     await d.store.insertSignals(id, g.offers, batch.origin);
     sirens.add(firm.siren);
     report.added.push(g.company);
+  }
+  return report;
+}
+
+export interface RegistryReport { unit: string; departements: string[]; added: string[]; scanned: number; note?: string }
+
+/**
+ * Détection gratuite par le registre, pour UN pôle : entreprises actives des départements du jour,
+ * dans les activités et tailles visées par le pôle, absentes du CRM (SIREN). Chaque fiche reçoit l'opportunité du pôle.
+ */
+export async function discoverRegistry(d: Deps, unit: keyof typeof REGISTRY_TARGETS, want: number, imposed: string[] = []): Promise<RegistryReport> {
+  const target = REGISTRY_TARGETS[unit];
+  const departements = departementsOf(d.today, imposed);
+  const report: RegistryReport = { unit, departements, added: [], scanned: 0 };
+  if (!d.registry) return { ...report, note: "Registre non branché" };
+  if (want <= 0) return report;
+  const sirens = new Set((await d.store.known()).map((k) => k.siren).filter(Boolean));
+  outer: for (const naf of rotate(target.naf, d.today)) {
+    for (const departement of departements) {
+      for (let page = 1; page <= 3; page++) {
+        let res: { firms: Firm[]; totalPages: number };
+        try { res = await d.registry({ departement, naf, tranches: target.tranches, page }); } catch (e) { report.note = (e as Error).message; break; }
+        report.scanned += res.firms.length;
+        for (const firm of res.firms) {
+          if (!firm.active || !/^\d{9}$/.test(firm.siren) || !firm.name || sirens.has(firm.siren)) continue;
+          sirens.add(firm.siren);
+          const id = await d.store.insertProspect(prospectFromFirm(firm, unit, d.today));
+          if (unit !== "swipsales") await d.store.upsertOpportunities(id, [{ unit, score: 0, offer: "", reason: `Cible ${target.label}`, signal: "", signalSource: "", primary: true }]);
+          report.added.push(firm.name);
+          if (report.added.length >= want) break outer;
+        }
+        if (page >= res.totalPages) break;
+      }
+    }
   }
   return report;
 }
@@ -125,7 +161,11 @@ export function supabaseStore(db: SupabaseClient, today: string): Store {
       return count || 0;
     },
     async pending(limit) {
-      return (must(await db.from("prospects").select("*").eq("research_status", "à rechercher").eq("opt_out", false).order("signal_date", { ascending: false, nullsFirst: false }).limit(limit)) as Record<string, unknown>[]).map(prospectFromRow);
+      // « à rechercher », plus les recherches restées « en cours » plus de 15 minutes (passage interrompu par la limite de durée)
+      const stale = new Date(Date.now() - 15 * 60_000).toISOString();
+      return (must(await db.from("prospects").select("*").eq("opt_out", false)
+        .or(`research_status.eq.à rechercher,and(research_status.eq.en cours,updated_at.lt.${stale})`)
+        .order("signal_date", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(limit)) as Record<string, unknown>[]).map(prospectFromRow);
     },
     async get(id) { const r = must(await db.from("prospects").select("*").eq("id", id).maybeSingle()); return r ? prospectFromRow(r as Record<string, unknown>) : null; },
     async update(id, patch) { must(await db.from("prospects").update(patch).eq("id", id)); },

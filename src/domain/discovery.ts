@@ -251,3 +251,76 @@ export function offersFromWeb(raw: unknown, today: string): JobOffer[] {
   }
   return out;
 }
+
+// --- Détection par le registre officiel (gratuite), pôle par pôle ----------------------------------
+
+export interface RegistryTarget { label: string; naf: string[]; tranches: string[] }
+
+/** Activités (codes NAF) et tailles visées par pôle. Le registre est gratuit : la détection ne coûte rien. */
+export const REGISTRY_TARGETS: Record<"swipsales" | "amandis" | "northreef", RegistryTarget> = {
+  swipsales: {
+    label: "cabinets de recrutement, ESN, distribution et conseil B2B (10 à 249 salariés)",
+    naf: ["78.10Z", "78.30Z", "62.02A", "62.01Z", "46.69B", "46.90Z", "70.22Z", "73.11Z", "46.51Z", "68.31Z"],
+    tranches: ["11", "12", "21", "22", "31"],
+  },
+  amandis: {
+    label: "PME de services et de distribution (20 à 249 salariés) et organismes de formation",
+    naf: ["70.22Z", "62.02A", "69.20Z", "68.31Z", "66.22Z", "46.90Z", "82.99Z", "85.59A", "73.11Z", "71.12B"],
+    tranches: ["12", "21", "22", "31"],
+  },
+  northreef: {
+    label: "artisans, commerces, restaurants, garages, professions libérales et TPE locales",
+    naf: ["43.21A", "43.22A", "43.32A", "43.34Z", "43.99C", "45.20A", "47.76Z", "47.78C", "56.10A", "56.10C", "96.02A", "96.04Z", "71.11Z", "86.23Z", "93.13Z", "55.10Z", "47.71Z", "81.21Z"],
+    tranches: ["01", "02", "03", "11", "12"],
+  },
+};
+
+/** Départements de métropole et d'outre-mer, pour la rotation quand aucun département n'est imposé. */
+export const DEPARTEMENTS = [
+  "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "2A", "2B", "21", "22", "23", "24", "25", "26", "27", "28", "29",
+  "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59",
+  "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89",
+  "90", "91", "92", "93", "94", "95", "971", "972", "973", "974", "976",
+];
+
+const dayIndex = (isoDay: string) => Math.floor(new Date(isoDay + "T12:00:00Z").getTime() / 864e5);
+
+/** Départements du jour : ceux imposés dans les réglages, sinon 3 départements qui tournent chaque jour sur toute la France. */
+export function departementsOf(isoDay: string, imposed: string[]): string[] {
+  const clean = imposed.map((d) => d.trim().toUpperCase()).filter((d) => DEPARTEMENTS.includes(d));
+  if (clean.length) return clean;
+  const i = (dayIndex(isoDay) * 3) % DEPARTEMENTS.length;
+  return [0, 1, 2].map((k) => DEPARTEMENTS[(i + k) % DEPARTEMENTS.length]);
+}
+
+/** Ordre des activités tourné chaque jour, pour ne pas toujours interroger les mêmes. */
+export const rotate = <T>(list: T[], isoDay: string): T[] => { const k = dayIndex(isoDay) % list.length; return [...list.slice(k), ...list.slice(0, k)]; };
+
+/** Fiche CRM créée depuis le registre : identité, activité, effectif et dirigeants, tous sourcés. Pas encore de signal. */
+export function prospectFromFirm(firm: Firm, unit: keyof typeof REGISTRY_TARGETS, today: string): Partial<Prospect> {
+  const url = `https://annuaire-entreprises.data.gouv.fr/entreprise/${firm.siren}`;
+  const boss = firm.officers[0];
+  return {
+    company: titleCase(firm.name),
+    website: "",
+    kind: "Entreprise qui recrute",
+    roles: "",
+    source: url,
+    verifiedAt: today,
+    sector: firm.nafLabel || firm.naf,
+    size: HEADCOUNT[firm.headcountCode] ? `${HEADCOUNT[firm.headcountCode]} salariés` : "Inconnue",
+    decisionName: boss?.name || "",
+    decisionTitle: boss?.role || "",
+    decisionVerified: !!boss,
+    crit: {},
+    stage: "Entreprise identifiée",
+    siren: firm.siren,
+    city: firm.city,
+    headcount: HEADCOUNT[firm.headcountCode] || "non diffusé",
+    naf: firm.naf,
+    origin: `registre_${unit}`,
+    assignedBy: unit === "swipsales" ? "legacy" : "orchestrateur",
+    researchStatus: "à rechercher",
+    research: { registry: { siren: firm.siren, name: firm.name, naf: [firm.naf, firm.nafLabel].filter(Boolean).join(" "), headcount: HEADCOUNT[firm.headcountCode] || "non diffusé", city: firm.city, created: firm.created, url, officers: firm.officers.slice(0, 5) } },
+  } as Partial<Prospect>;
+}

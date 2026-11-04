@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupByCompany, inTargetSize, isStaffing, matchFirm, offersFromWeb, parseFirms, parseFranceTravail, pickCandidates, prospectFromDiscovery, themeOf, webDiscoveryPrompt, WEB_THEMES } from "./discovery.js";
+import { departementsOf, prospectFromFirm, REGISTRY_TARGETS, groupByCompany, inTargetSize, isStaffing, matchFirm, offersFromWeb, parseFirms, parseFranceTravail, pickCandidates, prospectFromDiscovery, themeOf, webDiscoveryPrompt, WEB_THEMES } from "./discovery.js";
 import { prospectFacts } from "./prompts.js";
 import { normalizePhone, normalizeResearch, researchPrompt } from "./research.js";
 import type { Prospect } from "./types.js";
@@ -162,5 +162,21 @@ describe("détection par recherche web", () => {
     const prompt = webDiscoveryPrompt("2026-11-04", 10, ["Connue SA"]);
     expect(prompt).toContain("Ignore ces entreprises déjà connues : Connue SA");
     expect(prompt).toContain("Ne lis pas les pages");
+  });
+});
+
+describe("détection par le registre", () => {
+  it("départements imposés, sinon 3 départements qui changent chaque jour", () => {
+    expect(departementsOf("2026-11-05", ["59", " 62", "99"])).toEqual(["59", "62"]);
+    const a = departementsOf("2026-11-05", []), b = departementsOf("2026-11-06", []);
+    expect(a).toHaveLength(3);
+    expect(a).not.toEqual(b);
+  });
+  it("chaque pôle a ses activités et ses tailles ; fiche sourcée par le registre", () => {
+    expect(REGISTRY_TARGETS.swipsales.naf).toContain("78.10Z"); // cabinets de recrutement
+    expect(REGISTRY_TARGETS.northreef.tranches).toContain("01"); // TPE et artisans
+    const f = parseFirms({ results: [firmRow()] })[0];
+    expect(prospectFromFirm(f, "amandis", "2026-11-05")).toMatchObject({ company: "Acme Solutions", origin: "registre_amandis", assignedBy: "orchestrateur", decisionName: "Claire Martin", source: "https://annuaire-entreprises.data.gouv.fr/entreprise/123456789" });
+    expect(prospectFromFirm(f, "swipsales", "2026-11-05").assignedBy).toBe("legacy");
   });
 });

@@ -4,7 +4,7 @@ import type { Firm, JobOffer } from "../../src/domain/discovery.js";
 import type { Prospect } from "../../src/domain/types.js";
 import { fromRow } from "../../src/lib/mapping.js";
 import { estimateUsd, runAgent, tools, type AgentTask, type MessagesApi } from "./agent.js";
-import { discover, enrichPending, type Deps, type Store } from "./prospecting.js";
+import { discover, discoverRegistry, enrichPending, type Deps, type Store } from "./prospecting.js";
 import { findFirms, salesOffers } from "./sources.js";
 
 const msg = (stop: string, content: unknown[], usage: Record<string, unknown> = {}): BetaMessage =>
@@ -153,5 +153,24 @@ describe("orchestration", () => {
     expect(r.drafts.unit).toBe("northreef");
     expect(r.drafts.issues.map((i) => i.rule)).toContain("certification"); // bloqué « À vérifier »
     expect(research.mock.calls[0][0]).toContain("DOSSIERS DES PÔLES");
+  });
+
+  it("registre : détection gratuite par pôle, sans doublon de SIREN, avec l'opportunité du pôle", async () => {
+    const m = memoryStore([{ id: "p0", company: "Déjà", siren: "111111111" }]);
+    const calls: { departement: string; naf: string; tranches: string[]; page: number }[] = [];
+    const registry = async (q: { departement: string; naf: string; tranches: string[]; page: number }) => {
+      calls.push(q);
+      const n = calls.length;
+      return { firms: [firm("111111111", "DEJA"), firm(String(200000000 + n * 10 + 1), `ARTISAN ${n} A`, "02"), firm(String(200000000 + n * 10 + 2), `ARTISAN ${n} B`, "01")], totalPages: 1 };
+    };
+    const r = await discoverRegistry({ store: m.store, today: "2026-11-05", offers: null, firms: async () => [], registry, research: null, dailyLimit: 10 }, "northreef", 5, ["59", "62"]);
+    expect(r.added).toHaveLength(5);
+    expect(r.departements).toEqual(["59", "62"]);
+    expect(calls[0]).toMatchObject({ departement: "59", page: 1 });
+    expect(calls[0].tranches).toEqual(["01", "02", "03", "11", "12"]);
+    const created = m.rows.slice(1);
+    expect(created[0]).toMatchObject({ origin: "registre_northreef", assignedBy: "orchestrateur", researchStatus: "à rechercher", siren: "200000011" });
+    expect(new Set(created.map((x) => x.siren)).size).toBe(5); // jamais deux fois la même entreprise
+    expect(m.opps.filter((o) => o.unit === "northreef")).toHaveLength(5);
   });
 });

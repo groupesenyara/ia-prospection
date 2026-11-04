@@ -8,7 +8,8 @@ import { contentSuggestions } from "../domain/suggestions";
 import type { Campaign, CampaignStep, ContentItem } from "../domain/types";
 import { canApproveContent, pendingValidation } from "../domain/validation";
 import { downloadCsv } from "../lib/csv";
-import { UNITS, type UnitId } from "../domain/units";
+import { UNIT_IDS, UNITS, type UnitId } from "../domain/units";
+import { supabase } from "../lib/supabase";
 import { api } from "../lib/supabase";
 import type { Data } from "../lib/useData";
 import { Empty, Kpi, pct, ProspectItem } from "./common";
@@ -37,12 +38,14 @@ export function Today({ data, open, notify }: P) {
   );
 }
 
-type ProspectingReport = { at: string; seconds: number; discovery: { origin?: string; offers: number; companies: number; added: string[]; skipped: Record<string, number>; usd?: number; note?: string }; enrichment: { done: string[]; failed: string[]; left: number; usd?: number; note?: string } };
+type ProspectingReport = { at: string; seconds: number; registry?: { unit: string; departements: string[]; added: string[]; scanned: number; note?: string }[]; discovery: { origin?: string; offers: number; companies: number; added: string[]; skipped: Record<string, number>; usd?: number; note?: string }; enrichment: { done: string[]; failed: string[]; left: number; usd?: number; note?: string } };
+type ProspectingCfg = { perUnit: number; departements: string[]; units: string[] };
 
 export function Crm({ data, open, notify, isOwner }: P) {
-  const [q, setQ] = useState(""); const [seg, setSeg] = useState("all"); const [rs, setRs] = useState("all"); const [busy, setBusy] = useState(false);
+  const [q, setQ] = useState(""); const [seg, setSeg] = useState("all"); const [rs, setRs] = useState("all"); const [pole, setPole] = useState("all"); const [busy, setBusy] = useState(false);
   const list = data.prospects.filter((p) =>
     (seg === "all" || (p.segment || "") === seg) &&
+    (pole === "all" || p.research?.primaryUnit === pole || (!p.research?.primaryUnit && (p.origin === `registre_${pole}` || (pole === "swipsales" && ["web", "france_travail", "manuel", undefined].includes(p.origin))))) &&
     (rs === "all" || (rs === "agent" ? !!p.origin && p.origin !== "manuel" : rs === "contact" ? !!(p.email || p.phone) : (p.researchStatus || "") === rs)) &&
     (!q || `${p.company} ${p.roles} ${p.sector} ${p.city || ""} ${p.decisionName}`.toLowerCase().includes(q.toLowerCase())));
   const report = data.settings.prospecting_report as ProspectingReport | undefined;
@@ -61,11 +64,19 @@ export function Crm({ data, open, notify, isOwner }: P) {
         </div>
       </div>
       {report && (
-        <div className="notice info small"><b>Agent de prospection · {frDate(report.at.slice(0, 10))}</b> — {report.discovery.note || `${report.discovery.offers} annonces commerciales lues (${report.discovery.origin === "web" ? "recherche web" : "France Travail"}), ${report.discovery.companies} entreprises, ${report.discovery.added.length} ajoutée(s)${Object.keys(report.discovery.skipped).length ? ` (écartées : ${Object.entries(report.discovery.skipped).map(([k, v]) => `${v} ${k}`).join(", ")})` : ""}`}. Recherche : {report.enrichment.note || `${report.enrichment.done.length} dossier(s) complété(s), ${report.enrichment.failed.length} en échec`}. Coût estimé : {((report.discovery.usd || 0) + (report.enrichment.usd || 0)).toLocaleString("fr-FR")} $.</div>
+        <div className="notice info small"><b>Dernier passage de l’agent · {frDate(report.at.slice(0, 10))} {report.at.slice(11, 16)} UTC</b>
+          <ul>
+            {(report.registry || []).map((r) => <li key={r.unit}><b>{UNITS[r.unit as UnitId]?.name || r.unit}</b> : {r.added.length} entreprise(s) ajoutée(s) depuis le registre (départements {r.departements.join(", ")}){r.note ? ` · ${r.note}` : ""}</li>)}
+            <li><b>Annonces d’emploi commerciales</b> : {report.discovery.note || `${report.discovery.offers} lues, ${report.discovery.added.length} entreprise(s) ajoutée(s)`}</li>
+            <li><b>Recherche IA</b> : {report.enrichment.note || `${report.enrichment.done.length} dossier(s) complété(s), ${report.enrichment.failed.length} en échec${report.enrichment.left ? `, ${report.enrichment.left} reporté(s) au prochain passage` : ""}`}. Coût estimé : {((report.discovery.usd || 0) + (report.enrichment.usd || 0)).toLocaleString("fr-FR")} $.</li>
+          </ul>
+        </div>
       )}
+      {isOwner && <AgentSettings data={data} notify={notify} />}
       <div className="fgrid">
         <label className="f">Rechercher<input type="search" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <label className="f">Segment<select value={seg} onChange={(e) => setSeg(e.target.value)}><option value="all">Tous</option>{Object.entries(SEGMENT_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+        <label className="f">Pôle<select value={pole} onChange={(e) => setPole(e.target.value)}><option value="all">Tous</option>{UNIT_IDS.map((u) => <option key={u} value={u}>{UNITS[u].name}</option>)}</select></label>
         <label className="f">Dossier<select value={rs} onChange={(e) => setRs(e.target.value)}>
           <option value="all">Tous</option><option value="agent">Trouvées par l’agent</option><option value="contact">Avec e-mail ou téléphone</option>
           <option value="à rechercher">À rechercher</option><option value="fait">Recherche faite</option><option value="échec">Recherche en échec</option>
@@ -73,6 +84,27 @@ export function Crm({ data, open, notify, isOwner }: P) {
       </div>
       <div className="panel"><div className="list">{list.length ? list.map((p) => <ProspectItem key={p.id} p={p} onOpen={open} extra={<>{p.city && <span>{p.city}</span>}{p.researchStatus === "fait" && <span className="tag fact">Dossier sourcé</span>}{p.research?.primaryUnit && <span className="tag">{UNITS[p.research.primaryUnit as UnitId]?.name}</span>}{p.researchStatus === "à rechercher" && <span className="tag">À rechercher</span>}</>} />) : <Empty title="Aucune entreprise" text="Ajoutez une entreprise avec la source qui prouve son besoin, ou lancez l’agent." />}</div></div>
     </section>
+  );
+}
+
+function AgentSettings({ data, notify }: { data: Data; notify: (m: string) => void }) {
+  const cfg: ProspectingCfg = { perUnit: 20, departements: [], units: ["swipsales", "amandis", "northreef"], ...(data.settings.prospecting as Partial<ProspectingCfg> | undefined) };
+  const [deps, setDeps] = useState(cfg.departements.join(", "));
+  const save = async (p: Partial<ProspectingCfg>) => {
+    const { error } = await supabase.from("settings").upsert({ key: "prospecting", value: { ...cfg, ...p } });
+    if (error) notify(error.message); else { notify("Réglages de l’agent enregistrés"); await data.reload(); }
+  };
+  return (
+    <details className="panel small"><summary><b>Réglages de l’agent</b> · {cfg.perUnit} entreprises par pôle et par passage · {cfg.departements.length ? `départements ${cfg.departements.join(", ")}` : "toute la France (3 départements par jour)"}</summary>
+      <div className="fgrid">
+        <label className="f">Nouvelles entreprises par pôle et par passage<input type="number" min={0} max={100} defaultValue={cfg.perUnit} onBlur={(e) => save({ perUnit: Number(e.target.value) })} /></label>
+        <label className="f">Départements (vide = toute la France en rotation)<input placeholder="ex. 59, 62, 80" value={deps} onChange={(e) => setDeps(e.target.value)} onBlur={() => save({ departements: deps.split(/[\s,;]+/).filter(Boolean) })} /></label>
+      </div>
+      <div className="row">{UNIT_IDS.map((u) => (
+        <label key={u} className="check"><input type="checkbox" checked={cfg.units.includes(u)} onChange={(e) => save({ units: e.target.checked ? [...cfg.units, u] : cfg.units.filter((x) => x !== u) })} /> {UNITS[u].name}</label>
+      ))}</div>
+      <p className="muted">La détection par le registre officiel est gratuite. Seule la recherche IA approfondie est payante (environ 0,04 $ par entreprise, plafonnée par RESEARCH_DAILY_LIMIT, 30 par jour par défaut). L’agent passe 3 fois par jour en semaine, et à chaque clic sur « Lancer l’agent maintenant ».</p>
+    </details>
   );
 }
 
