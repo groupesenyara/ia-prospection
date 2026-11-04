@@ -1,11 +1,13 @@
 // Consignes envoyées à Claude. Partagées entre le front (aperçu) et la fonction serveur (appel réel).
+import type { ConfirmedFact } from "./claims.js";
 import type { Prospect } from "./types.js";
+import { playbookText, UNITS, type UnitId } from "./units.js";
 
 export const RULES = `RÈGLES ABSOLUES
 - Utilise uniquement les informations fournies. N'invente aucun chiffre, client, témoignage, résultat, statistique, offre d'emploi, coordonnée ni fonctionnalité.
-- N'affirme jamais que SwipSales permet de recruter plus vite, moins cher ou mieux.
 - Les éléments marqués HYPOTHÈSE ou ESTIMATION se formulent comme des questions, jamais comme des faits.
-- Ne cite un prix que s'il figure dans les faits produit confirmés.
+- Ne cite un prix, une référence client ou une certification que s'ils figurent dans les faits confirmés du pôle.
+- Approche de conseil : comprendre le problème avant de proposer, apporter de la valeur d'abord, une seule question. Pas de fausse urgence, pas de fausse rareté, pas de pression.
 - Vouvoiement, ton direct et humain, phrases courtes, pas de jargon, pas d'emoji.`;
 
 export function prospectFacts(p: Prospect): string {
@@ -27,21 +29,23 @@ export function prospectFacts(p: Prospect): string {
   return lines.join("\n") || "- (peu d'informations)";
 }
 
-export function outreachPrompt(p: Prospect, facts: string[], signature: string): string {
-  return `Tu prépares des brouillons de prospection B2B en français pour SwipSales, plateforme de recrutement réservée aux profils commerciaux. Un humain relira et enverra lui-même.
+export const factLines = (facts: ConfirmedFact[]): string[] => facts.map((f) => `[${f.kind}] ${f.text}`);
+
+export function outreachPrompt(p: Prospect, unit: UnitId, facts: ConfirmedFact[]): string {
+  const u = UNITS[unit];
+  return `Tu prépares des brouillons de prospection B2B en français pour ${u.name}. Un humain relira et enverra lui-même.
 
 ${RULES}
-- E-mail : 120 mots maximum, une seule question, un appel à l'action simple ; personnalise-le avec un fait sourcé ; il cite la source de l'adresse en une phrase discrète et se termine par une phrase qui permet de refuser les relances. Signature : ${signature || "[Prénom Nom]"}.
-- LinkedIn : 300 caractères maximum.
+- E-mail : 120 mots maximum, une seule question, un appel à l'action simple ; personnalise-le avec un fait sourcé ; il cite la source de l'adresse en une phrase discrète et se termine par une phrase qui permet de refuser les relances. Signature : ${u.signature}.
+- LinkedIn : 300 caractères maximum (envoyé à la main).
 
-FAITS PRODUIT CONFIRMÉS
-${facts.length ? facts.map((f) => "- " + f).join("\n") : "- Aucun fait confirmé : décris seulement SwipSales comme une plateforme dédiée au recrutement commercial."}
+${playbookText(unit, factLines(facts))}
 
 PROSPECT
 ${prospectFacts(p)}
 
 Réponds uniquement avec un objet JSON :
-{"accroche":"","email_objet":"","email":"","linkedin":"","script_appel":"","questions_decouverte":[""],"objections":[{"objection":"","reponse":""}],"proposition_demo":"","plan_relance":[{"jour":"J+3","canal":"","message":""}]}`;
+{"accroche":"","email_objet":"","email":"","linkedin":"","script_appel":"","questions_decouverte":[""],"objections":[{"objection":"","reponse":""}],"proposition_rdv":"","plan_relance":[{"jour":"J+3","canal":"","message":""}]}`;
 }
 
 export function contentPrompt(title: string, why: string, company: Pick<Prospect, "company" | "roles" | "sector"> | null, facts: string[]): string {

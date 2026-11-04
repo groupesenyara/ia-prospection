@@ -3,6 +3,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prospectFromRow } from "../../src/lib/mapping.js";
 import { generate, HttpError, type GenerateRequest } from "../_lib/generate.js";
 import { adminClient, json, teamUser } from "../_lib/server.js";
+import type { ConfirmedFact } from "../../src/domain/claims.js";
+import type { UnitFacts } from "../../src/domain/research.js";
+import type { UnitId } from "../../src/domain/units.js";
 
 export async function POST(req: Request): Promise<Response> {
   const db = adminClient();
@@ -26,10 +29,11 @@ export async function POST(req: Request): Promise<Response> {
         const { data } = await db.from("prospects").select("*").eq("id", id).maybeSingle();
         return data ? prospectFromRow(data) : null;
       },
-      async getSettings() {
-        const { data } = await db.from("settings").select("value").eq("key", "product").maybeSingle();
-        const v = (data?.value || {}) as { facts?: { text: string; status: string }[]; sender?: string; signature?: string };
-        return { facts: (v.facts || []).filter((f) => f.status === "Confirmé").map((f) => f.text), signature: [v.sender, v.signature].filter(Boolean).join(", ") };
+      async getFacts() {
+        const { data } = await db.from("unit_facts").select("unit,kind,text").eq("status", "Confirmé");
+        const out: UnitFacts = {};
+        for (const f of (data || []) as { unit: UnitId; kind: ConfirmedFact["kind"]; text: string }[]) (out[f.unit] ||= []).push({ kind: f.kind, text: f.text });
+        return out;
       },
       async complete(prompt) {
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

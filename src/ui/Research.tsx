@@ -3,6 +3,7 @@ import { useState } from "react";
 import { frDate } from "../domain/dates";
 import type { Prospect, ResearchDossier } from "../domain/types";
 import { api } from "../lib/supabase";
+import { UNITS, type UnitId } from "../domain/units";
 import type { Data } from "../lib/useData";
 
 const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
@@ -30,6 +31,10 @@ export function ResearchPanel({ p, data, notify }: { p: Prospect; data: Data; no
       {r.registry && (
         <p className="small muted">Registre : <a href={r.registry.url} target="_blank" rel="noreferrer">SIREN {r.registry.siren}</a> · {r.registry.naf} · {r.registry.headcount} salariés · {r.registry.city}{r.registry.created ? ` · créée le ${frDate(r.registry.created)}` : ""}{r.registry.officers.length ? ` · ${r.registry.officers.map((o) => `${o.name} (${o.role})`).join(", ")}` : ""}</p>
       )}
+      {!!r.units?.length && (<><h4>Pôles</h4><ul>{r.units.map((u) => (
+        <li key={u.unit}><b>{UNITS[u.unit as UnitId]?.name || u.unit}</b> · {u.score}/100{r.primaryUnit === u.unit ? <span className="tag fact"> pôle principal</span> : null}
+          {u.offer ? <> · {u.offer}</> : null}{u.reason ? <span className="muted"> — {u.reason}</span> : null}{u.signalSource ? <> · <Src url={u.signalSource} /></> : null}</li>
+      ))}</ul></>)}
       {!!r.contacts?.length && (<><h4>Coordonnées publiques</h4><ul>{r.contacts.map((c, i) => (
         <li key={i}><b>{LABEL[c.type]}</b> {c.type === "email" ? <a href={`mailto:${c.value}`}>{c.value}</a> : c.type === "telephone" ? <a href={`tel:${c.value.replace(/\s/g, "")}`}>{c.value}</a> : <a href={c.value} target="_blank" rel="noreferrer">{host(c.value)}</a>} · {c.owner} · <Src url={c.url} /></li>
       ))}</ul></>)}

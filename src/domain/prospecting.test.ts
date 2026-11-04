@@ -135,7 +135,9 @@ describe("contrôle de la recherche IA", () => {
     const facts = prospectFacts({ ...prospect(), ...patch } as Prospect);
     expect(facts).toContain("Levée de 3 M€ en septembre 2026 [FAIT, source : https://presse.example/acme, 2026-09-15]");
     expect(facts).toContain("Angle d’approche possible");
-    const prompt = researchPrompt(prospect(), ["Plateforme réservée aux commerciaux"], "Yannis");
+    const prompt = researchPrompt(prospect(), { swipsales: [{ kind: "offre", text: "Plateforme réservée aux commerciaux" }] });
+    expect(prompt).toContain("[offre] Plateforme réservée aux commerciaux");
+    expect(prompt).toContain("Signature : Yannis Sénéchal, Amandis School");
     expect(prompt).toContain("N'invente et ne reconstitue JAMAIS une adresse e-mail");
     expect(prompt).toContain("Claire Martin, Président");
   });

@@ -8,6 +8,7 @@ import { contentSuggestions } from "../domain/suggestions";
 import type { Campaign, CampaignStep, ContentItem } from "../domain/types";
 import { canApproveContent, pendingValidation } from "../domain/validation";
 import { downloadCsv } from "../lib/csv";
+import { UNITS, type UnitId } from "../domain/units";
 import { api } from "../lib/supabase";
 import type { Data } from "../lib/useData";
 import { Empty, Kpi, pct, ProspectItem } from "./common";
@@ -68,7 +69,7 @@ export function Crm({ data, open, notify, isOwner }: P) {
           <option value="à rechercher">À rechercher</option><option value="fait">Recherche faite</option><option value="échec">Recherche en échec</option>
         </select></label>
       </div>
-      <div className="panel"><div className="list">{list.length ? list.map((p) => <ProspectItem key={p.id} p={p} onOpen={open} extra={<>{p.city && <span>{p.city}</span>}{p.researchStatus === "fait" && <span className="tag fact">Dossier sourcé</span>}{p.researchStatus === "à rechercher" && <span className="tag">À rechercher</span>}</>} />) : <Empty title="Aucune entreprise" text="Ajoutez une entreprise avec la source qui prouve son besoin, ou lancez l’agent." />}</div></div>
+      <div className="panel"><div className="list">{list.length ? list.map((p) => <ProspectItem key={p.id} p={p} onOpen={open} extra={<>{p.city && <span>{p.city}</span>}{p.researchStatus === "fait" && <span className="tag fact">Dossier sourcé</span>}{p.research?.primaryUnit && <span className="tag">{UNITS[p.research.primaryUnit as UnitId]?.name}</span>}{p.researchStatus === "à rechercher" && <span className="tag">À rechercher</span>}</>} />) : <Empty title="Aucune entreprise" text="Ajoutez une entreprise avec la source qui prouve son besoin, ou lancez l’agent." />}</div></div>
     </section>
   );
 }

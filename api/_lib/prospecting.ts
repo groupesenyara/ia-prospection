@@ -2,7 +2,8 @@
 // N'envoie rien : les fiches et les brouillons attendent la validation de Yannis.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { groupByCompany, inTargetSize, matchFirm, pickCandidates, prospectFromDiscovery, type Firm, type JobOffer } from "../../src/domain/discovery.js";
-import { normalizeResearch, researchPrompt } from "../../src/domain/research.js";
+import { normalizeResearch, researchPrompt, type OpportunityDraft, type UnitFacts } from "../../src/domain/research.js";
+import type { UnitId } from "../../src/domain/units.js";
 import type { Prospect } from "../../src/domain/types.js";
 import { prospectFromRow, toRow } from "../../src/lib/mapping.js";
 import type { AgentResult } from "./agent.js";
@@ -18,7 +19,9 @@ export interface Store {
   get(id: string): Promise<Prospect | null>;
   update(id: string, patch: Record<string, unknown>): Promise<void>;
   logUsage(kind: string, tokensIn: number, tokensOut: number): Promise<void>;
-  product(): Promise<{ facts: string[]; signature: string }>;
+  facts(): Promise<UnitFacts>;
+  /** Crée ou met à jour l'opportunité ouverte de chaque pôle pertinent (sans toucher au pipeline ni à l'activation). */
+  upsertOpportunities(prospectId: string, opps: OpportunityDraft[]): Promise<void>;
 }
 
 export interface Deps {
@@ -69,16 +72,17 @@ export async function enrichOne(d: Deps, p: Prospect): Promise<boolean> {
   if (p.optOut) return false;
   await d.store.update(p.id, { research_status: "en cours" });
   try {
-    const { facts, signature } = await d.store.product();
-    const r = await d.research(researchPrompt(p, facts, signature));
+    const facts = await d.store.facts();
+    const r = await d.research(researchPrompt(p, facts));
     await d.store.logUsage("recherche", r.tokensIn, r.tokensOut);
     if (!r.raw) {
       await d.store.update(p.id, { research_status: "échec", research: { ...(p.research || {}), at: d.today, gaps: `Recherche interrompue (${r.stop || "sans fiche"})` } });
       return false;
     }
-    const { patch } = normalizeResearch(r.raw, p, d.today);
+    const { patch, opportunities } = normalizeResearch(r.raw, p, d.today, facts);
     patch.research = { ...patch.research, cost: { tokensIn: r.tokensIn, tokensOut: r.tokensOut, searches: r.searches, fetches: r.fetches, usd: r.usd } };
     await d.store.update(p.id, toRow(patch as Record<string, unknown>, ["id"]));
+    await d.store.upsertOpportunities(p.id, opportunities);
     return true;
   } catch (e) {
     await d.store.update(p.id, { research_status: "échec", research: { ...(p.research || {}), at: d.today, gaps: `Erreur : ${(e as Error).message}`.slice(0, 300) } });
@@ -126,10 +130,21 @@ export function supabaseStore(db: SupabaseClient, today: string): Store {
     async get(id) { const r = must(await db.from("prospects").select("*").eq("id", id).maybeSingle()); return r ? prospectFromRow(r as Record<string, unknown>) : null; },
     async update(id, patch) { must(await db.from("prospects").update(patch).eq("id", id)); },
     async logUsage(kind, tokensIn, tokensOut) { must(await db.from("ai_usage").insert({ day: today, kind, tokens_in: tokensIn, tokens_out: tokensOut })); },
-    async product() {
-      const { data } = await db.from("settings").select("value").eq("key", "product").maybeSingle();
-      const v = (data?.value || {}) as { facts?: { text: string; status: string }[]; sender?: string; signature?: string };
-      return { facts: (v.facts || []).filter((f) => f.status === "Confirmé").map((f) => f.text), signature: [v.sender, v.signature].filter(Boolean).join(", ") };
+    async facts() {
+      const rows = must(await db.from("unit_facts").select("unit,kind,text").eq("status", "Confirmé")) as { unit: UnitId; kind: never; text: string }[];
+      const out: UnitFacts = {};
+      for (const f of rows) (out[f.unit] ||= []).push({ kind: f.kind, text: f.text });
+      return out;
+    },
+    async upsertOpportunities(prospectId, opps) {
+      for (const o of opps) {
+        const fields = { score: o.score, offer: o.offer, reason: o.reason };
+        const signal = o.signal && o.signalSource ? { signal: o.signal, signal_source: o.signalSource } : {};
+        const { data: existing } = await db.from("opportunities").select("id").eq("prospect_id", prospectId).eq("unit", o.unit).in("status", ["ouverte", "en attente"]).maybeSingle();
+        // Swipe Sales : le pipeline et le signal restent synchronisés depuis la fiche (prospects.stage)
+        if (existing) must(await db.from("opportunities").update(o.unit === "swipsales" ? fields : { ...fields, ...signal }).eq("id", existing.id));
+        else must(await db.from("opportunities").insert({ prospect_id: prospectId, unit: o.unit, stage: "Entreprise identifiée", ...fields, ...signal }));
+      }
     },
   };
 }

@@ -10,7 +10,7 @@ export function pendingValidation(
 ): PendingItem[] {
   const out: PendingItem[] = [];
   campaigns.filter((c) => c.status === "Brouillon").forEach((c) => out.push({ kind: "campaign", id: c.id, title: `Campagne « ${c.name} »`, detail: "à valider avant tout envoi" }));
-  prospects.filter((p) => p.drafts && !p.drafts.validated && !p.optOut).forEach((p) => out.push({ kind: "drafts", id: p.id, title: `Messages pour ${p.company}`, detail: "brouillons à relire et valider" }));
+  prospects.filter((p) => p.drafts && !p.drafts.validated && !p.optOut).forEach((p) => out.push({ kind: "drafts", id: p.id, title: `Messages pour ${p.company}`, detail: Array.isArray(p.drafts!.issues) && p.drafts!.issues.length ? `${p.drafts!.issues.length} affirmation(s) à vérifier : validation bloquée` : "brouillons à relire et valider" }));
   prospects.filter((p) => p.partnerStatus === "Convention à valider" && !p.conventionOk).forEach((p) => out.push({ kind: "convention", id: p.id, title: `Convention ${p.company}`, detail: "partenariat à valider" }));
   content.filter((x) => x.status === "À valider").forEach((x) => out.push({ kind: "content", id: x.id, title: `Publication « ${x.title} »`, detail: x.prospectId ? "cite une entreprise : accord requis" : "contenu à valider" }));
   return out;

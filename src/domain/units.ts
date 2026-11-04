@@ -10,6 +10,7 @@ export interface UnitPlaybook {
   id: UnitId;
   name: string;
   pitch: string; // ce qu'est le pôle, en une phrase, sans promesse
+  signature: string; // signature des messages
   offers: string[]; // catalogue (descriptif, sans prix)
   targets: string[]; // entreprises et interlocuteurs visés
   buyers: string[]; // fonctions à approcher en priorité
@@ -30,6 +31,7 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
   swipsales: {
     id: "swipsales",
     name: "Swipe Sales",
+    signature: "Yannis Sénéchal, SwipSales",
     pitch: "SaaS de recrutement réservé aux profils commerciaux : les entreprises et les candidats commerciaux se découvrent par swipe et échangent après un match.",
     offers: ["Abonnement recruteur à la plateforme de recrutement de profils commerciaux", "Partenariats avec les écoles de commerce", "Programme d'affiliation (influenceurs)"],
     targets: ["Entreprises qui recrutent des commerciaux", "Cabinets de recrutement", "Startups et PME", "ESN et sociétés commerciales"],
@@ -50,6 +52,7 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
   amandis: {
     id: "amandis",
     name: "Amandis School",
+    signature: "Yannis Sénéchal, Amandis School",
     pitch: "Organisme de formation : intelligence artificielle, nouveaux métiers, usages numériques et compétences commerciales, pour les entreprises et leurs équipes.",
     offers: [
       "Utilisation professionnelle de l'IA", "Création et utilisation d'agents IA", "Automatisation des processus",
@@ -77,6 +80,7 @@ export const UNITS: Record<UnitId, UnitPlaybook> = {
   northreef: {
     id: "northreef",
     name: "Groupe Senyara · Web & IA",
+    signature: "Yannis Sénéchal, Groupe Senyara (Saint-Amand-les-Eaux)",
     pitch: "Agence web du Groupe Senyara (nom face aux prospects : « Groupe Senyara ») : sites web, applications, logiciels métiers, plateformes SaaS, agents IA et automatisations sur mesure.",
     offers: [
       "Site vitrine, site professionnel, e-commerce, refonte, optimisation et maintenance",

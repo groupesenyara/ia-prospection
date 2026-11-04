@@ -1,10 +1,16 @@
 // Recherche web d'une entreprise par l'agent : consignes, format de sortie et contrôle de ce qui est conservé.
 // Principe : on ne garde que des informations publiques, publiées par l'entreprise ou une source professionnelle,
 // avec l'adresse de la page où elles ont été lues. Rien n'est deviné (pas d'e-mail reconstitué prénom.nom@).
+import { checkClaims, type ConfirmedFact } from "./claims.js";
 import { CRITERIA } from "./scoring.js";
-import { RULES } from "./prompts.js";
+import { factLines, RULES } from "./prompts.js";
 import { domainOf } from "./dedup.js";
-import type { Angle, Criterion, DecisionMaker, Prospect, PublicContact, ResearchDossier, SourcedFact } from "./types.js";
+import type { Angle, Criterion, DecisionMaker, Prospect, PublicContact, ResearchDossier, SourcedFact, UnitEvaluation } from "./types.js";
+import { playbookText, UNIT_IDS, UNITS, type UnitId } from "./units.js";
+
+export type UnitFacts = Partial<Record<UnitId, ConfirmedFact[]>>;
+/** Seuil de score à partir duquel un pôle ouvre une opportunité. */
+export const OPPORTUNITY_THRESHOLD = 40;
 
 export const SAVE_TOOL = "enregistrer_fiche";
 
@@ -25,14 +31,32 @@ export const saveToolSchema = {
     site_web: { type: "string", description: "Site officiel de l'entreprise, ou chaîne vide" },
     resume: { type: "string", description: "3 phrases maximum : activité, clients, taille, actualité" },
     secteur: S,
-    decideurs: { type: "array", items: sourced({ nom: S, fonction: S }), description: "Personnes qui décident des recrutements commerciaux (dirigeant, directeur commercial, DRH), nommées sur une source publique" },
+    decideurs: { type: "array", items: sourced({ nom: S, fonction: S }), description: "Décideurs pour le pôle principal (dirigeant, directeur commercial, DRH, responsable formation, responsable des opérations…), nommés sur une source publique" },
     contacts: {
       type: "array",
       description: "Coordonnées PROFESSIONNELLES PUBLIÉES telles quelles. Jamais d'adresse reconstituée.",
       items: sourced({ type: { type: "string", enum: ["email", "telephone", "linkedin", "formulaire"] }, valeur: S, titulaire: { type: "string", description: "Nom et fonction de la personne, ou « standard », « service RH », « recrutement »" } }),
     },
     faits: { type: "array", items: sourced({ fait: S, date: { type: "string", description: "AAAA-MM-JJ ou chaîne vide" } }) },
-    signaux: { type: "array", description: "Signaux d'achat récents : recrutements commerciaux, levée de fonds, ouverture d'agence, nouveau produit, croissance", items: sourced({ signal: S, date: S }) },
+    signaux: { type: "array", description: "Signaux d'achat récents et sourcés, tous pôles confondus", items: sourced({ signal: S, date: S }) },
+    poles: {
+      type: "array",
+      description: "Évaluation de CHACUN des trois pôles (swipsales, amandis, northreef), une entrée par pôle",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          pole: { type: "string", enum: ["swipsales", "amandis", "northreef"] },
+          score: { type: "integer", description: "0 à 100 : pertinence d'une approche de ce pôle, d'après des signaux sourcés" },
+          offre: { type: "string", description: "L'offre précise du catalogue du pôle à proposer, ou chaîne vide si aucune" },
+          raison: { type: "string", description: "Pourquoi, en une phrase, en citant le signal" },
+          signal: { type: "string", description: "Le signal principal pour ce pôle, ou chaîne vide" },
+          source_url: { type: "string", description: "Source du signal, ou chaîne vide" },
+        },
+        required: ["pole", "score", "offre", "raison", "signal", "source_url"],
+      },
+    },
+    pole_principal: { type: "string", enum: ["swipsales", "amandis", "northreef"], description: "Le pôle à solliciter en premier (un seul)" },
     angles: { type: "array", description: "2 à 4 angles d'approche personnalisés", items: { type: "object", additionalProperties: false, properties: { angle: S, appui: { type: "string", description: "Le fait sourcé sur lequel l'angle s'appuie" } }, required: ["angle", "appui"] } },
     besoin_suppose: S,
     qualification: { type: "object", additionalProperties: false, properties: { volume: level, pertinence: level, fit: level, access: level, recurrence: level }, required: ["volume", "pertinence", "fit", "access", "recurrence"] },
@@ -44,10 +68,10 @@ export const saveToolSchema = {
     },
     limites: { type: "string", description: "Ce qui n'a pas été trouvé ou reste incertain" },
   },
-  required: ["site_web", "resume", "secteur", "decideurs", "contacts", "faits", "signaux", "angles", "besoin_suppose", "qualification", "approche", "limites"],
+  required: ["site_web", "resume", "secteur", "decideurs", "contacts", "faits", "signaux", "poles", "pole_principal", "angles", "besoin_suppose", "qualification", "approche", "limites"],
 } as const;
 
-export function researchPrompt(p: Prospect, productFacts: string[], signature: string): string {
+export function researchPrompt(p: Prospect, facts: UnitFacts): string {
   const r = p.research || {};
   const known = [
     `Entreprise : ${p.company}`,
@@ -57,38 +81,39 @@ export function researchPrompt(p: Prospect, productFacts: string[], signature: s
     p.sector ? `Activité (registre) : ${p.sector}` : "",
     p.headcount ? `Effectif (registre) : ${p.headcount}` : "",
     r.registry?.officers?.length ? `Dirigeants (registre) : ${r.registry.officers.map((o) => `${o.name}, ${o.role}`).join(" ; ")}` : "",
-    r.offers?.length ? `Offres commerciales publiées :\n${r.offers.map((o) => `  - ${o.date} · ${o.title} · ${o.city} · ${o.url}`).join("\n")}` : p.signal ? `Signal : ${p.signal} (${p.signalSource})` : "",
+    r.offers?.length ? `Offres d'emploi publiées :\n${r.offers.map((o) => `  - ${o.date} · ${o.title} · ${o.city} · ${o.url}`).join("\n")}` : p.signal ? `Signal : ${p.signal} (${p.signalSource})` : "",
   ].filter(Boolean).join("\n");
-  return `Tu es l'agent de prospection de SwipSales, plateforme de recrutement réservée aux profils commerciaux (SDR, BDR, commerciaux terrain et sédentaires, account managers). Tu prépares la fiche d'une entreprise qui recrute des commerciaux, pour qu'un humain la contacte de façon personnalisée.
+  return `Tu es l'agent commercial du Groupe Senyara. Le groupe a trois pôles, et un seul doit approcher l'entreprise en premier :
+${UNIT_IDS.map((id) => `- ${id} = ${UNITS[id].name} : ${UNITS[id].pitch} Signaux : ${UNITS[id].signals.join(" ; ")}.`).join("\n")}
 
 CE QUE L'ON SAIT DÉJÀ
 ${known}
 
 TA MISSION
-1. Trouve le site officiel, puis lis ses pages Contact, Mentions légales, Équipe / À propos, Carrières / Recrutement et Actualités.
-2. Relève les coordonnées professionnelles PUBLIÉES : standard téléphonique, e-mail générique (contact@, rh@, recrutement@, jobs@), e-mail ou téléphone nominatif seulement s'il est publié tel quel par l'entreprise ou par la personne elle-même dans un cadre professionnel, page LinkedIn de l'entreprise ou profil public du décideur, formulaire de contact.
-3. Identifie qui décide des recrutements commerciaux (dirigeant, directeur commercial, DRH) et sa fonction exacte.
-4. Relève les faits utiles pour personnaliser l'approche : activité, clients ou marchés, croissance, levées de fonds, ouvertures, nouveaux produits, presse, nombre et nature des postes commerciaux ouverts.
-5. Propose 2 à 4 angles d'approche, chacun appuyé sur un fait sourcé, puis rédige une première approche.
+1. Trouve le site officiel, puis lis ses pages Contact ou Mentions légales, et si utile Équipe, Carrières ou Actualités.
+2. Relève les coordonnées professionnelles PUBLIÉES : standard, e-mail générique (contact@, rh@, recrutement@), e-mail ou téléphone nominatif seulement s'il est publié tel quel dans un cadre professionnel, page LinkedIn de l'entreprise ou profil public du décideur, formulaire.
+3. Comprends l'entreprise et relève les faits utiles : activité, clients, croissance, recrutements, outils et présence numérique (site récent ou daté, adapté au mobile ou non, HTTPS), processus visibles.
+4. Évalue CHAQUE pôle (score 0 à 100, d'après des signaux sourcés, pas des suppositions), choisis l'offre précise du catalogue qui répond au besoin, puis désigne UN pôle principal. Ne propose pas tous les services : la meilleure opportunité d'abord.
+5. Identifie le décideur pertinent pour le pôle principal, propose 2 à 4 angles d'approche appuyés sur des faits, puis rédige la première approche POUR LE PÔLE PRINCIPAL SEULEMENT.
 
 RÈGLES DE COLLECTE (impératives)
-- Chaque coordonnée, décideur et fait porte l'adresse exacte de la page où tu l'as lu. Sans source, ne le mets pas.
+- Chaque coordonnée, décideur, fait et signal porte l'adresse exacte de la page où tu l'as lu. Sans source, ne le mets pas.
 - N'invente et ne reconstitue JAMAIS une adresse e-mail (pas de prénom.nom@domaine déduit), ni un numéro.
 - Pas d'adresse ou de numéro personnel (gmail, hotmail, mobile privé publié ailleurs que dans un cadre professionnel).
 - N'ouvre pas les pages LinkedIn, Facebook ou Instagram ; tu peux citer l'adresse d'un profil apparue dans les résultats de recherche.
 - Si l'entreprise demande sur son site à ne pas être démarchée, indique-le dans « limites ».
-- Qualification : niveau 0 à 3 par critère, « fait » seulement si une source le prouve, sinon « hypothese ».
+- Qualification (critères Swipe Sales, garde-les même si un autre pôle est principal) : niveau 0 à 3, « fait » seulement si une source le prouve, sinon « hypothese ».
 ${CRITERIA.filter((c) => !c.auto).map((c) => `  · ${c.k} — ${c.label} : ${c.levels.map((l, i) => `${i} ${l}`).join(" / ")}`).join("\n")}
 
-RÈGLES DE RÉDACTION DE L'APPROCHE
+RÈGLES DE RÉDACTION DE L'APPROCHE (pôle principal)
 ${RULES}
-- E-mail : 120 mots maximum, adressé au décideur si identifié, une seule question, un appel à l'action simple. Il cite la source de l'adresse en une phrase discrète et se termine par une phrase qui permet de refuser les relances. Signature : ${signature || "[Prénom Nom]"}.
-- LinkedIn : 300 caractères maximum. Script d'appel : 6 lignes maximum, pour le standard puis le décideur.
+- E-mail : 120 mots maximum, adressé au décideur si identifié, une seule question, un appel à l'action simple. Il cite la source de l'adresse en une phrase discrète et se termine par une phrase qui permet de refuser les relances. Signe avec la signature du pôle principal.
+- LinkedIn : 300 caractères maximum (envoyé à la main). Script d'appel : 6 lignes maximum, pour le standard puis le décideur.
 
-FAITS PRODUIT CONFIRMÉS
-${productFacts.length ? productFacts.map((f) => "- " + f).join("\n") : "- Aucun fait confirmé : décris seulement SwipSales comme une plateforme dédiée au recrutement commercial."}
+DOSSIERS DES PÔLES (seuls les faits confirmés peuvent être affirmés)
+${UNIT_IDS.map((id) => `${playbookText(id, factLines(facts[id] || []))}\nSignature : ${UNITS[id].signature}`).join("\n\n")}
 
-Sois économe : 3 recherches et 3 pages au plus (commence par le site officiel : page Contact ou Mentions légales, puis Équipe ou Carrières), puis appelle l'outil ${SAVE_TOOL} une seule fois avec la fiche complète. Champs inconnus : chaîne ou liste vide.`;
+Sois économe : 3 recherches et 3 pages au plus (commence par le site officiel), puis appelle l'outil ${SAVE_TOOL} une seule fois avec la fiche complète. Champs inconnus : chaîne ou liste vide.`;
 }
 
 // --- Contrôle de la sortie -----------------------------------------------------------------------
@@ -113,13 +138,16 @@ export function normalizePhone(v: string): string {
   return "+33 " + d.slice(1, 2) + " " + d.slice(2).replace(/(\d{2})(?=\d)/g, "$1 ");
 }
 
+export interface OpportunityDraft { unit: UnitId; score: number; offer: string; reason: string; signal: string; signalSource: string; primary: boolean }
+
 export interface NormalizedResearch {
   dossier: ResearchDossier;
+  opportunities: OpportunityDraft[];
   patch: Partial<Prospect> & { drafts?: Record<string, unknown> | null };
 }
 
 /** Ne garde que l'exploitable et le sourcé, puis prépare la mise à jour de la fiche (sans écraser une saisie humaine). */
-export function normalizeResearch(raw: unknown, p: Prospect, today: string): NormalizedResearch {
+export function normalizeResearch(raw: unknown, p: Prospect, today: string, unitFacts: UnitFacts = {}): NormalizedResearch {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   let rejected = 0;
   const website = httpUrl(r.site_web) || p.website;
@@ -165,6 +193,19 @@ export function normalizeResearch(raw: unknown, p: Prospect, today: string): Nor
     rejected,
   };
 
+  // Pôles : un score par pôle, un seul pôle principal (le meilleur si l'agent n'en désigne pas de valide).
+  const units: UnitEvaluation[] = UNIT_IDS.map((id) => {
+    const e = arr(r.poles).find((x) => x.pole === id) || {};
+    const signalSource = httpUrl(e.source_url);
+    return { unit: id, score: Math.max(0, Math.min(100, Math.round(Number(e.score) || 0))), offer: txt(e.offre, 200), reason: txt(e.raison, 400), signal: signalSource ? txt(e.signal, 300) : "", signalSource };
+  }).sort((a, b) => b.score - a.score);
+  const primary = (UNIT_IDS as string[]).includes(String(r.pole_principal)) && units.find((u) => u.unit === r.pole_principal)!.score > 0 ? String(r.pole_principal) as UnitId : (units[0].score > 0 ? units[0].unit as UnitId : null);
+  dossier.units = units;
+  if (primary) dossier.primaryUnit = primary;
+  const opportunities: OpportunityDraft[] = units
+    .filter((u) => u.unit === primary || u.score >= OPPORTUNITY_THRESHOLD)
+    .map((u) => ({ unit: u.unit as UnitId, score: u.score, offer: u.offer, reason: u.reason, signal: u.signal, signalSource: u.signalSource, primary: u.unit === primary }));
+
   // Coordonnée principale : celle du décideur si publiée, sinon recrutement / RH, sinon générique, sinon standard.
   const lead = decisionMakers[0];
   const byOwner = (c: PublicContact) => (lead && c.owner.toLowerCase().includes(lead.name.split(" ").pop()!.toLowerCase()) ? 0 : /recrut|rh|ressources|job|carri/i.test(c.owner + c.value) ? 1 : 2);
@@ -198,10 +239,9 @@ export function normalizeResearch(raw: unknown, p: Prospect, today: string): Nor
 
   const a = (r.approche && typeof r.approche === "object" ? r.approche : {}) as Record<string, unknown>;
   if (block(a.email, 2000) && !(p as { drafts?: { validated?: boolean } }).drafts?.validated) {
-    patch.drafts = {
-      by: "claude", source: "recherche", generatedAt: today, validated: false,
-      raw: [`Accroche : ${txt(a.accroche, 300)}`, `Objet : ${txt(a.email_objet, 200)}`, "", block(a.email, 2000), "", `LinkedIn : ${txt(a.linkedin, 400)}`, "", `Appel : ${block(a.script_appel, 1200)}`].join("\n"),
-    };
+    const unit: UnitId = primary || "swipsales";
+    const raw = [`Accroche : ${txt(a.accroche, 300)}`, `Objet : ${txt(a.email_objet, 200)}`, "", block(a.email, 2000), "", `LinkedIn : ${txt(a.linkedin, 400)}`, "", `Appel : ${block(a.script_appel, 1200)}`].join("\n");
+    patch.drafts = { by: "claude", source: "recherche", unit, generatedAt: today, validated: false, raw, issues: checkClaims(raw, unitFacts[unit] || []) };
   }
-  return { dossier, patch };
+  return { dossier, patch, opportunities };
 }
