@@ -94,3 +94,30 @@ describe("faits saisis en production", () => {
     expect(rules).toEqual(expect.arrayContaining(["certification", "financement"]));
   });
 });
+
+describe("base de connaissances du 2026-11-05", () => {
+  const load = async (unit: string) => {
+    const { readFileSync } = await import("node:fs");
+    const seed = ["unit_facts_2026-11-04.sql", "unit_facts_2026-11-05_base_connaissances.sql"].map((f) => readFileSync(new URL(`../../supabase/seed/${f}`, import.meta.url), "utf8")).join("\n");
+    return [...seed.matchAll(/\('(\w+)','(\w+)','((?:[^']|'')+)','Confirmé'/g)].filter((m) => m[1] === unit).map((m) => ({ kind: m[2] as never, text: m[3].replace(/''/g, "'") }));
+  };
+  it("aucun champ à compléter ([___]) n'est saisi comme fait", async () => {
+    for (const u of UNIT_IDS) for (const f of await load(u)) expect(f.text).not.toMatch(/\[|___/);
+  });
+  it("Groupe Senyara (web) : les prix et références renseignés passent, un prix inventé est bloqué", async () => {
+    const facts = await load("northreef");
+    const ok = "Un site vitrine démarre à 1 000 € HT, avec 5 % de remise pour une entreprise créée cette année à Saint-Amand-les-Eaux. Nous avons réalisé le site de Phil Multi-Services.";
+    expect(checkClaims(ok, facts)).toEqual([]);
+    expect(checkClaims("Une refonte coûte 1 500 €.", facts).map((i) => i.rule)).toEqual(["prix"]); // refonte : prix non renseigné
+    expect(checkClaims("Nous garantissons la première place sur Google.", facts).map((i) => i.rule)).toEqual(["résultat"]);
+  });
+  it("Amandis : sans Qualiopi, ni OPCO ni CPF ; aucun prix de formation renseigné", async () => {
+    const facts = await load("amandis");
+    expect([...new Set(checkClaims("Formation finançable par votre OPCO, certifiée Qualiopi, 900 € par personne.", facts).map((i) => i.rule))].sort()).toEqual(["certification", "financement", "prix"]);
+  });
+  it("SwipSales : commission d'affiliation citée, aucun chiffre d'inscrits", async () => {
+    const facts = await load("swipsales");
+    expect(checkClaims("L'affiliation est rémunérée 10 % de commission.", facts)).toEqual([]);
+    expect(checkClaims("Déjà 500 candidats inscrits.", facts).map((i) => i.rule)).toEqual(["référence"]);
+  });
+});
