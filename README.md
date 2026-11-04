@@ -51,7 +51,7 @@ npm run build
 
 ## Plateforme multi-pôles (Groupe Senyara)
 
-Un seul CRM pour trois activités : **Swipe Sales** (SaaS de recrutement commercial), **Amandis School** (formation) et **North Reef** (développement web, logiciels, IA, automatisation).
+Un seul CRM pour trois activités : **Swipe Sales** (SaaS de recrutement commercial), **Amandis School** (formation) et **Groupe Senyara · Web & IA** (agence web, applications, logiciels, IA, automatisation ; identifiant technique `northreef`, nom face aux prospects : « Groupe Senyara »). Aucune limite géographique : toute la France.
 
 - `prospects` reste le **référentiel unique des entreprises** : une fiche par entreprise, sans doublon.
 - `opportunities` : **une opportunité par entreprise et par pôle**, avec son pipeline, son score, sa valeur estimée et sa prochaine action. Une entreprise peut intéresser plusieurs pôles, mais **un seul la sollicite à la fois** (règle de la base, aussi appliquée à l'enregistrement des contacts).
