@@ -64,6 +64,21 @@ Un seul CRM pour trois activités : **Swipe Sales** (SaaS de recrutement commerc
 - Dossiers des pôles : `src/domain/units.ts` (offres, cibles, signaux, qualification, pipeline, interdits). Indicateurs : `src/domain/opportunities.ts`.
 - Retour arrière : `supabase/rollback/20261104150439_multi_units_down.sql`, testé par `supabase/rollback.test.ts`.
 
+## LinkedIn du jour
+
+Encart de l'écran **Aujourd'hui** : jusqu'à 10 décideurs à inviter par jour, choisis parmi les fiches recherchées par l'agent.
+
+**Critères de sélection** : décideur identifié, note rédigée, sans opposition, jamais invité, pas contacté depuis 3 jours, pas sollicité par un autre pôle.
+
+**Classement** : score du pôle, puis fraîcheur du signal.
+
+**Pour chaque décideur** :
+- lien vers son profil (ou une recherche LinkedIn s'il n'a pas été trouvé) ;
+- note d'invitation modifiable, limitée à 300 caractères et contrôlée par le garde-fou ;
+- bouton **« Invitation envoyée »** : il journalise le contact sur le bon pôle (opportunité activée, refusée par la base si un autre pôle sollicite déjà l'entreprise) et planifie la relance.
+
+**L'envoi se fait à la main sur LinkedIn** : ses conditions interdisent l'automatisation.
+
 ## Opportunity Hunter
 
 Veille des demandes de prestations publiées, analyse et propositions à valider. Ce module est intégré au CRM : une annonce retenue devient une fiche entreprise et une opportunité de pôle (bouton « Ajouter au CRM »). Onglet **Opportunity Hunter**.

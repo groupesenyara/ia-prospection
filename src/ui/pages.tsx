@@ -12,10 +12,11 @@ import { UNITS, type UnitId } from "../domain/units";
 import { api } from "../lib/supabase";
 import type { Data } from "../lib/useData";
 import { Empty, Kpi, pct, ProspectItem } from "./common";
+import { LinkedInToday } from "./LinkedInToday";
 
 type P = { data: Data; open: (id: string | null) => void; notify: (m: string) => void; isOwner: boolean };
 
-export function Today({ data, open }: P) {
+export function Today({ data, open, notify }: P) {
   const t = today();
   const due = data.prospects.filter((p) => !p.optOut && p.nextDate && p.nextDate <= t).sort((a, b) => a.nextDate.localeCompare(b.nextDate));
   const pending = pendingValidation(data.prospects as never, data.campaigns, data.content);
@@ -31,6 +32,7 @@ export function Today({ data, open }: P) {
         <div className="panel"><h2>Relances et actions dues</h2><div className="list">{due.length ? due.map((p) => <ProspectItem key={p.id} p={p} onOpen={open} />) : <Empty title="Rien d’urgent" />}</div></div>
         <div className="panel"><h2>À valider par Yannis</h2><div className="list">{pending.length ? pending.map((i) => <div key={i.kind + i.id} className="item" onClick={() => i.kind === "drafts" || i.kind === "convention" ? open(i.id) : undefined}><div className="t">{i.title}</div><div className="r"><span className="pill g-risk">À valider</span></div><div className="s">{i.detail}</div></div>) : <Empty title="Rien à valider" />}</div></div>
       </div>
+      <LinkedInToday data={data} open={open} notify={notify} />
     </section>
   );
 }
