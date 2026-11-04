@@ -1,6 +1,6 @@
 -- Opportunity Hunter : veille des demandes de prestations publiées (marchés publics, plateformes de mise en relation)
 -- et réponse assistée. Intégré au CRM existant : une annonce retenue se rattache à une fiche entreprise (prospects)
--- et à une opportunité de pôle (opportunities). Migration additive. Retour arrière : supabase/rollback/20261105120000_opportunity_hunter_down.sql
+-- et à une opportunité de pôle (opportunities). Migration additive. Retour arrière : supabase/rollback/20261104155755_opportunity_hunter_down.sql
 --
 -- Règles portées par la base :
 --   * une annonce n'est enregistrée qu'une fois par source (anti-doublon) ;
