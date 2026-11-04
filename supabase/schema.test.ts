@@ -32,6 +32,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(new URL("./migrations/20261104134714_prospecting.sql", import.meta.url), "utf8"));
   await db.exec(readFileSync(new URL("./migrations/20261104150439_multi_units.sql", import.meta.url), "utf8"));
   await db.exec(readFileSync(new URL("./migrations/20261104150623_pin_search_path.sql", import.meta.url), "utf8"));
+  await db.exec(readFileSync(new URL("./migrations/20261104155755_opportunity_hunter.sql", import.meta.url), "utf8"));
   await db.exec(`
     grant usage on schema public to authenticated, anon;
     grant select, insert, update, delete on all tables in schema public to authenticated;
@@ -151,5 +152,22 @@ describe("migration et règles", () => {
     expect((await as(OUTSIDER, `select * from opportunities`)).rows).toHaveLength(0);
     expect((await as(EDITOR, `select id from business_units order by sort`)).rows.map((r: { id: string }) => r.id)).toEqual(["swipsales", "amandis", "northreef"]);
     await expect(as(EDITOR, `update business_units set name = 'X' where id = 'amandis' returning id`)).resolves.toMatchObject({ rows: [] });
+  });
+
+  it("Opportunity Hunter : anti-doublon, validation par l'owner, pas d'envoi sans validation ni avec une alerte", async () => {
+    const id = (await as(EDITOR, `insert into hunter_items (source, external_id, title, proposal) values ('boamp', '26-12345', 'Refonte du site de la mairie', 'Proposition') returning id`)).rows[0].id;
+    await expect(as(EDITOR, `insert into hunter_items (source, external_id, title) values ('boamp', '26-12345', 'Doublon')`)).rejects.toThrow(/duplicate key/);
+    await expect(as(EDITOR, `update hunter_items set send_status = 'envoyée manuellement' where id = $1`, [id])).rejects.toThrow(/envoi_apres_validation/);
+    await expect(as(EDITOR, `update hunter_items set validation = 'validée' where id = $1`, [id])).rejects.toThrow(/owner/);
+    await expect(as(OWNER, `update hunter_items set validation = 'validée', proposal_issues = '[{"rule":"prix"}]' where id = $1`, [id])).rejects.toThrow(/proposition_sans_alerte/);
+    await as(OWNER, `update hunter_items set validation = 'validée' where id = $1`, [id]);
+    await as(EDITOR, `update hunter_items set proposal = 'Modifiée' where id = $1`, [id]); // modifiée après validation : à revalider
+    expect((await as(OWNER, `select validation from hunter_items where id = $1`, [id])).rows[0].validation).toBe("à valider");
+    await as(OWNER, `update hunter_items set validation = 'validée' where id = $1`, [id]);
+    await as(EDITOR, `update hunter_items set send_status = 'envoyée manuellement' where id = $1`, [id]);
+    expect((await as(OWNER, `select validated_by, sent_at is not null as sent from hunter_items where id = $1`, [id])).rows[0]).toEqual({ validated_by: OWNER, sent: true });
+    await expect(as(EDITOR, `update hunter_items set proposal = 'Après envoi' where id = $1`, [id])).rejects.toThrow(/déjà envoyée/);
+    await expect(as(EDITOR, `update hunter_items set send_status = 'envoyée auto' where id = $1`, [id])).rejects.toThrow(/send_status_check/);
+    expect((await as(OUTSIDER, `select * from hunter_items`)).rows).toHaveLength(0);
   });
 });

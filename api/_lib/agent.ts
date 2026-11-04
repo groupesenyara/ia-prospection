@@ -31,11 +31,12 @@ const ADVANCED = /^claude-(opus|sonnet|fable)-/;
 
 export function tools(model: string, t: Pick<AgentTask, "saveTool" | "saveSchema" | "saveDescription" | "searches" | "fetches">): BetaToolUnion[] {
   const adv = ADVANCED.test(model);
-  const list: BetaToolUnion[] = [
-    adv
+  const list: BetaToolUnion[] = [];
+  if (t.searches > 0) {
+    list.push(adv
       ? { type: "web_search_20260209", name: "web_search", max_uses: t.searches, user_location: { type: "approximate", country: "FR", timezone: "Europe/Paris" } }
-      : { type: "web_search_20250305", name: "web_search", max_uses: t.searches, user_location: { type: "approximate", country: "FR", timezone: "Europe/Paris" } },
-  ];
+      : { type: "web_search_20250305", name: "web_search", max_uses: t.searches, user_location: { type: "approximate", country: "FR", timezone: "Europe/Paris" } });
+  }
   if (t.fetches > 0) {
     list.push(adv
       ? { type: "web_fetch_20260209", name: "web_fetch", max_uses: t.fetches, blocked_domains: NO_FETCH, max_content_tokens: 5000 }

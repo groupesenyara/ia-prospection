@@ -64,6 +64,43 @@ Un seul CRM pour trois activités : **Swipe Sales** (SaaS de recrutement commerc
 - Dossiers des pôles : `src/domain/units.ts` (offres, cibles, signaux, qualification, pipeline, interdits). Indicateurs : `src/domain/opportunities.ts`.
 - Retour arrière : `supabase/rollback/20261104150439_multi_units_down.sql`, testé par `supabase/rollback.test.ts`.
 
+## Opportunity Hunter
+
+Veille des demandes de prestations publiées, analyse et propositions à valider. Ce module est intégré au CRM : une annonce retenue devient une fiche entreprise et une opportunité de pôle (bouton « Ajouter au CRM »). Onglet **Opportunity Hunter**.
+
+**Modes** :
+- **surveillance** : détecter et enregistrer ;
+- **assisté** (par défaut) : détecter, qualifier, noter sur 100, rédiger la proposition et la soumettre à Yannis ;
+- **automatique** : **indisponible**, tant qu'aucune plateforme n'autorise officiellement l'envoi automatique. La base refuse tout statut « envoyée auto ».
+
+**Passages** : 6 h 30 et 12 h 30 UTC (`/api/cron/hunter`), ou le bouton « Lancer la veille maintenant ».
+
+**Garde-fous** :
+- arrêt d'urgence, réservé à Yannis ;
+- limite quotidienne d'analyses IA (30 par défaut) ;
+- anti-doublon par source ;
+- journal de toutes les actions ;
+- pré-filtre par mots-clés avant tout appel à l'IA, gratuit ;
+- seul Yannis valide ;
+- une proposition modifiée après validation est à revalider, et une proposition envoyée ne peut plus être modifiée ;
+- garde-fou sur les affirmations (`claims.ts`) et pas de prix ferme sur un projet complexe non qualifié ;
+- une référence client n'est proposée que si elle correspond au pôle et au type de prestation.
+
+**Coût** : l'analyse porte sur le texte de l'annonce, sans recherche web. Avec Claude Haiku 5.5, comptez environ 0,001 à 0,003 $ par annonce analysée.
+
+### Audit des plateformes (2026-11-05)
+
+| Plateforme | Intégration officielle | Ce que fait l'outil |
+|---|---|---|
+| **BOAMP** (marchés publics) | API open data de la DILA, gratuite, sans clé, mise à jour 2 fois par jour | Lecture automatique des avis des 2 derniers jours, pré-filtre, analyse. La « proposition » est une note de réponse interne (pièces à préparer, points à vérifier). |
+| **Codeur.com** | Flux RSS des projets par mots-clés, décrit par une source tierce. **À confirmer en production** : le domaine était injoignable depuis l'environnement de développement. | Lecture des flux RSS configurés. La réponse se fait sur Codeur, à la main (abonnement Codeur requis). |
+| **Malt** | Pas d'API publique. Projets proposés par notification (e-mail, application). Protection anti-robots, recherche interdite aux robots. | Coller l'e-mail ou l'annonce dans l'outil. La lecture automatique d'une boîte dédiée aux notifications est à venir. |
+| **ComeUp** | Pas d'API publique. Notifications de commandes et de messages. | Coller la demande dans l'outil. |
+| **LinkedIn** | Pas d'API pour les demandes de prestations (Services Marketplace). Les conditions de l'API interdisent d'automatiser les publications. | Coller la demande dans l'outil. Aucune automatisation. |
+| Autres flux RSS publics | Selon chaque site | Ajoutables dans les réglages (`settings.hunter.feeds`). |
+
+Aucune protection n'est contournée : pas d'extraction de pages, pas de robot connecté à un compte.
+
 ## Agent de prospection
 
 Chaque jour de semaine à 5 h UTC (`/api/cron/prospect`), ou à la demande depuis l'écran CRM (« Lancer l’agent maintenant », Yannis uniquement) :

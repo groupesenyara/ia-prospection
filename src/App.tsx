@@ -4,10 +4,11 @@ import { configured, supabase } from "./lib/supabase";
 import { useData } from "./lib/useData";
 import { Campaigns, Comms, Crm, Founding, Partners, Performance, Today } from "./ui/pages";
 import { ProspectPanel } from "./ui/ProspectPanel";
+import { Hunter } from "./ui/Hunter";
 
 const TABS = [
   ["today", "Aujourd’hui"], ["crm", "Prospection et CRM"], ["partners", "Partenariats"], ["founding", "Founding Recruiters"],
-  ["campaigns", "Campagnes"], ["comms", "Communication"], ["perf", "Performances"],
+  ["hunter", "Opportunity Hunter"], ["campaigns", "Campagnes"], ["comms", "Communication"], ["perf", "Performances"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
@@ -52,7 +53,7 @@ function Workspace({ session }: { session: Session }) {
         {openId !== undefined ? (
           <ProspectPanel data={data} id={openId} onClose={() => setOpenId(undefined)} notify={notify} />
         ) : tab === "today" ? <Today {...props} /> : tab === "crm" ? <Crm {...props} /> : tab === "partners" ? <Partners {...props} /> :
-          tab === "founding" ? <Founding {...props} /> : tab === "campaigns" ? <Campaigns {...props} /> : tab === "comms" ? <Comms {...props} /> : <Performance {...props} />}
+          tab === "founding" ? <Founding {...props} /> : tab === "hunter" ? <Hunter {...props} /> : tab === "campaigns" ? <Campaigns {...props} /> : tab === "comms" ? <Comms {...props} /> : <Performance {...props} />}
       </main>
       {toast && <div className="toast" role="status">{toast}</div>}
     </>

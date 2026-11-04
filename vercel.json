@@ -1,10 +1,34 @@
 {
   "crons": [
-    { "path": "/api/cron/prospect", "schedule": "0 5 * * 1-5" },
-    { "path": "/api/cron/daily", "schedule": "0 6 * * 1-5" }
+    {
+      "path": "/api/cron/prospect",
+      "schedule": "0 5 * * 1-5"
+    },
+    {
+      "path": "/api/cron/daily",
+      "schedule": "0 6 * * 1-5"
+    },
+    {
+      "path": "/api/cron/hunter",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/hunter",
+      "schedule": "30 12 * * *"
+    }
   ],
   "functions": {
-    "api/cron/prospect.ts": { "maxDuration": 300 },
-    "api/research.ts": { "maxDuration": 300 }
+    "api/cron/prospect.ts": {
+      "maxDuration": 300
+    },
+    "api/research.ts": {
+      "maxDuration": 300
+    },
+    "api/cron/hunter.ts": {
+      "maxDuration": 300
+    },
+    "api/hunter.ts": {
+      "maxDuration": 300
+    }
   }
 }

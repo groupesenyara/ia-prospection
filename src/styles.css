@@ -182,3 +182,9 @@ ul.clean{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .dossier ul{margin:0;padding-left:1.1rem;display:grid;gap:4px;font-size:.9rem}
 .dossier a{color:var(--accent);overflow-wrap:anywhere}
 .src-link{font-size:.75rem;color:var(--muted)!important}
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th,.tbl td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.tbl th{color:var(--muted);font-weight:600}
+.tbl td:not(:first-child),.tbl th:not(:first-child){text-align:right}
+.panel textarea{width:100%;box-sizing:border-box;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);color:var(--ink)}
+@media (max-width:640px){.tbl{font-size:.78rem}.tbl th,.tbl td{padding:4px}}
