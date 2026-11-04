@@ -21,6 +21,7 @@ export interface AgentTask {
   searches: number; // recherches web maximum (0,01 $ chacune)
   fetches: number; // pages lues maximum (0 = pas de lecture de page)
   effort?: "low" | "medium" | "high";
+  maxTokens?: number;
 }
 
 /** Réseaux sociaux : jamais ouverts par l'agent (conditions d'utilisation). Leurs adresses peuvent être citées depuis les résultats de recherche. */
@@ -54,7 +55,7 @@ export async function runAgent(api: MessagesApi, model: string, task: AgentTask,
   for (let turn = 0; turn < maxTurns; turn++) {
     const msg = await api.create({
       model,
-      max_tokens: 8000,
+      max_tokens: task.maxTokens ?? 8000,
       ...fallback,
       output_config: { effort: task.effort ?? "low" },
       tools: tools(model, task),

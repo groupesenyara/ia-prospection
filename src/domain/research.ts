@@ -199,7 +199,11 @@ export function normalizeResearch(raw: unknown, p: Prospect, today: string, unit
     const signalSource = httpUrl(e.source_url);
     return { unit: id, score: Math.max(0, Math.min(100, Math.round(Number(e.score) || 0))), offer: txt(e.offre, 200), reason: txt(e.raison, 400), signal: signalSource ? txt(e.signal, 300) : "", signalSource };
   }).sort((a, b) => b.score - a.score);
-  const primary = (UNIT_IDS as string[]).includes(String(r.pole_principal)) && units.find((u) => u.unit === r.pole_principal)!.score > 0 ? String(r.pole_principal) as UnitId : (units[0].score > 0 ? units[0].unit as UnitId : null);
+  // Pôle principal : celui de l'agent, sinon le meilleur score, sinon le pôle de la cible du registre qui a amené la fiche.
+  const fromOrigin = /^registre_(swipsales|amandis|northreef)$/.exec(p.origin || "")?.[1] as UnitId | undefined;
+  const primary = (UNIT_IDS as string[]).includes(String(r.pole_principal)) && units.find((u) => u.unit === r.pole_principal)!.score > 0
+    ? String(r.pole_principal) as UnitId
+    : units[0].score > 0 ? units[0].unit as UnitId : fromOrigin ?? null;
   dossier.units = units;
   if (primary) dossier.primaryUnit = primary;
   const opportunities: OpportunityDraft[] = units
