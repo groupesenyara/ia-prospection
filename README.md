@@ -62,7 +62,7 @@ Un seul CRM pour trois activités : **Swipe Sales** (SaaS de recrutement commerc
 - **Transition Swipe Sales** : le pipeline historique (`prospects.stage`) reste la source, et l'opportunité Swipe Sales le suit par déclencheur. Les écrans actuels fonctionnent sans changement.
 - **Garde-fou** (`src/domain/claims.ts`) : un brouillon qui affirme une certification (Qualiopi…), un financement (OPCO, CPF…), un prix, une référence client, un chiffre de résultat ou une fausse urgence sans fait confirmé correspondant est bloqué « À vérifier ».
 - Dossiers des pôles : `src/domain/units.ts` (offres, cibles, signaux, qualification, pipeline, interdits). Indicateurs : `src/domain/opportunities.ts`.
-- Retour arrière : `supabase/rollback/20261105090000_multi_units_down.sql`, testé par `supabase/rollback.test.ts`.
+- Retour arrière : `supabase/rollback/20261104150439_multi_units_down.sql`, testé par `supabase/rollback.test.ts`.
 
 ## Agent de prospection
 

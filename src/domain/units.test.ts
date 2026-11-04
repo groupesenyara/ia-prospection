@@ -83,3 +83,14 @@ describe("opportunités", () => {
     expect(contactBlocker("a", "swipsales", opps)).toBeNull();
   });
 });
+
+describe("faits saisis en production", () => {
+  it("les interdits Amandis (pas de Qualiopi, pas de CPF) ne couvrent jamais une affirmation", async () => {
+    const { readFileSync } = await import("node:fs");
+    const seed = readFileSync(new URL("../../supabase/seed/unit_facts_2026-11-04.sql", import.meta.url), "utf8");
+    const facts = [...seed.matchAll(/\('(\w+)','(\w+)','((?:[^']|'')+)','Confirmé'/g)].filter((m) => m[1] === "amandis").map((m) => ({ kind: m[2] as never, text: m[3].replace(/''/g, "'") }));
+    expect(facts.length).toBe(8);
+    const rules = checkClaims("Nos formations sont certifiées Qualiopi et éligibles au CPF.", facts).map((i) => i.rule);
+    expect(rules).toEqual(expect.arrayContaining(["certification", "financement"]));
+  });
+});

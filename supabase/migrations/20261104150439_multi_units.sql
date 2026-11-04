@@ -1,7 +1,7 @@
 -- Plateforme commerciale multi-pôles du Groupe Senyara : Swipe Sales, Amandis School, North Reef.
 -- Principe : UN SEUL CRM. Une entreprise = une fiche (`prospects`), et chaque pôle y suit sa propre opportunité.
 -- Migration additive : rien n'est supprimé, Swipe Sales continue de fonctionner sans changement.
--- Retour arrière : supabase/rollback/20261105090000_multi_units_down.sql
+-- Retour arrière : supabase/rollback/20261104150439_multi_units_down.sql
 --
 -- Règles portées par la base :
 --   * une entreprise n'a qu'une opportunité ouverte par pôle ;
