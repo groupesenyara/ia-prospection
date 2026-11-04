@@ -10,6 +10,8 @@ import type { EventType, Prospect } from "../domain/types";
 import type { Data, ProspectRow } from "../lib/useData";
 import { api } from "../lib/supabase";
 import { ResearchPanel } from "./Research";
+import { UNIT_IDS, UNITS, type UnitId } from "../domain/units";
+import type { ClaimIssue } from "../domain/claims";
 
 type Draft = Partial<ProspectRow>;
 const blank: Draft = { company: "", website: "", sector: "", kind: KINDS[0], roles: "", source: "", segment: "", stage: STAGES[0], crit: {} };
@@ -21,7 +23,8 @@ export function ProspectPanel({ data, id, onClose, notify }: { data: Data; id: s
   const [obj, setObj] = useState("");
   const [campId, setCampId] = useState("");
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setF(current || blank); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [unit, setUnit] = useState<UnitId>("swipsales");
+  useEffect(() => { setF(current || blank); setUnit((current?.research?.primaryUnit as UnitId) || "swipsales"); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k: keyof ProspectRow) => (e: { target: { value: string; type?: string; checked?: boolean } }) =>
     setF((x) => ({ ...x, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
@@ -117,12 +120,21 @@ export function ProspectPanel({ data, id, onClose, notify }: { data: Data; id: s
         </div>
         <div className="panel"><h3>Messages</h3>
           <div className="row">
+            <select value={unit} onChange={(e) => setUnit(e.target.value as UnitId)} aria-label="Pôle">
+              {UNIT_IDS.map((u) => <option key={u} value={u}>{UNITS[u].name}{current.research?.primaryUnit === u ? " (pôle principal)" : ""}</option>)}
+            </select>
             <button className="btn sm primary" disabled={busy} onClick={() => run(async () => {
-              const r = await api<{ text: string }>("/api/ai/generate", { kind: "outreach", prospectId: current.id });
-              await data.updateProspect(current.id, { drafts: { by: "claude", generatedAt: new Date().toISOString().slice(0, 10), raw: r.text, validated: false } });
+              const r = await api<{ text: string; unit: UnitId; issues: ClaimIssue[] }>("/api/ai/generate", { kind: "outreach", prospectId: current.id, unit });
+              await data.updateProspect(current.id, { drafts: { by: "claude", unit: r.unit, generatedAt: new Date().toISOString().slice(0, 10), raw: r.text, issues: r.issues, validated: false } });
             }, "Brouillons rédigés : à valider")}>Rédiger avec Claude</button>
-            {current.drafts && !current.drafts.validated && <button className="btn sm" disabled={busy} onClick={() => run(() => data.updateProspect(current.id, { drafts: { ...current.drafts, validated: true, validatedAt: new Date().toISOString().slice(0, 10) } }), "Messages validés")}>Valider ces messages</button>}
+            {current.drafts && !current.drafts.validated && !((current.drafts.issues as ClaimIssue[] | undefined)?.length) && <button className="btn sm" disabled={busy} onClick={() => run(() => data.updateProspect(current.id, { drafts: { ...current.drafts, validated: true, validatedAt: new Date().toISOString().slice(0, 10) } }), "Messages validés")}>Valider ces messages</button>}
           </div>
+          {current.drafts?.unit ? <p className="small muted">Pôle : <b>{UNITS[current.drafts.unit as UnitId]?.name || String(current.drafts.unit)}</b>{current.drafts.validated ? " · validés" : ""}</p> : null}
+          {!!(current.drafts?.issues as ClaimIssue[] | undefined)?.length && (
+            <div className="notice"><b>À vérifier : validation bloquée.</b> Ces affirmations ne sont couvertes par aucun fait confirmé du pôle. Régénérez, ou confirmez le fait dans la base de connaissances.
+              <ul>{(current.drafts!.issues as ClaimIssue[]).map((i, k) => <li key={k}>{i.hint} : « {i.excerpt} »</li>)}</ul>
+            </div>
+          )}
           {current.drafts ? <pre className="report">{String(current.drafts.raw ?? JSON.stringify(current.drafts, null, 2))}</pre> : <p className="small muted">Aucun brouillon.</p>}
         </div>
       </>)}

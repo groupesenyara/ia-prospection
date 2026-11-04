@@ -73,6 +73,9 @@ export interface SourcedFact extends Sourced { text: string }
 export interface Angle { angle: string; basis: string }
 
 /** Dossier : registre et offres (détection), puis ce que l'agent a trouvé sur le web public, chaque élément avec sa source. */
+/** Évaluation d'un pôle par l'agent : score, offre précise, raison et signal sourcé. */
+export interface UnitEvaluation { unit: string; score: number; offer: string; reason: string; signal: string; signalSource: string }
+
 export interface ResearchDossier {
   at?: string;
   summary?: string;
@@ -87,6 +90,8 @@ export interface ResearchDossier {
   gaps?: string;
   registry?: { siren: string; name: string; naf: string; headcount: string; city: string; created: string; url: string; officers: { name: string; role: string }[] };
   offers?: { title: string; url: string; date: string; city: string }[];
+  units?: UnitEvaluation[];
+  primaryUnit?: string;
   rejected?: number;
   cost?: { tokensIn: number; tokensOut: number; searches: number; fetches: number; usd?: number };
 }

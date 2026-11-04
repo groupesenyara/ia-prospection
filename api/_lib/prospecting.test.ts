@@ -66,6 +66,7 @@ describe("sources publiques", () => {
 function memoryStore(rows: Record<string, unknown>[] = []) {
   const signals: unknown[] = [];
   const usage: string[] = [];
+  const opps: Record<string, unknown>[] = [];
   const store: Store = {
     known: async () => rows.map((r) => ({ id: r.id as string, company: r.company as string, website: (r.website as string) || "", siren: (r.siren as string) || null })),
     insertProspect: async (p) => { const id = `p${rows.length + 1}`; rows.push({ ...p, id }); return id; },
@@ -75,9 +76,10 @@ function memoryStore(rows: Record<string, unknown>[] = []) {
     get: async (id) => (rows.find((r) => r.id === id) as unknown as Prospect) || null,
     update: async (id, patch) => { const r = rows.find((x) => x.id === id)!; Object.assign(r, fromRow(patch)); },
     logUsage: async (kind) => { usage.push(kind); },
-    product: async () => ({ facts: [], signature: "Yannis" }),
+    facts: async () => ({ amandis: [{ kind: "interdit", text: "Amandis School n'est PAS certifiée Qualiopi" }] }),
+    upsertOpportunities: async (prospectId, list) => { opps.push(...list.map((o) => ({ prospectId, ...o }))); },
   };
-  return { store, rows, signals, usage };
+  return { store, rows, signals, usage, opps };
 }
 const offer = (id: string, company: string): JobOffer => ({ id, title: "Commercial terrain", company, companyUrl: "", city: "Lyon", postalCode: "69003", rome: "D1402", contract: "CDI", publishedAt: "2026-11-03", url: `https://ft/${id}`, excerpt: "", headcountLabel: "" });
 const firm = (siren: string, name: string, headcountCode = "12"): Firm => ({ siren, name, naf: "62.01Z", nafLabel: "", headcountCode, category: "PME", city: "Lyon", postalCode: "69003", created: "", active: true, officers: [] });
@@ -128,5 +130,28 @@ describe("orchestration", () => {
     expect(m.rows[1]).toMatchObject({ origin: "web", signalSource: "https://ft/https://wttj/acme-sdr" });
     expect(m.signals).toEqual([{ id: "p2", ext: "https://wttj/acme-sdr", source: "web" }]);
     expect(m.usage).toEqual(["detection"]);
+  });
+
+  it("multi-pôles : la recherche ouvre les opportunités pertinentes, rédige pour le pôle principal et applique le garde-fou", async () => {
+    const m = memoryStore([{ id: "a", company: "Atelier Martin", researchStatus: "à rechercher", optOut: false, crit: {} }]);
+    const raw = {
+      resume: "Menuiserie de 15 salariés, site daté de 2014, recrute 2 commerciaux terrain.",
+      poles: [
+        { pole: "northreef", score: 82, offre: "Refonte de site", raison: "Site non adapté au mobile, copyright 2014", signal: "Site daté de 2014", source_url: "https://atelier-martin.fr" },
+        { pole: "swipsales", score: 55, offre: "Abonnement recruteur", raison: "2 offres de commerciaux terrain", signal: "Offre commercial terrain", source_url: "https://ft/1" },
+        { pole: "amandis", score: 20, offre: "", raison: "Pas de signal de formation", signal: "", source_url: "" },
+      ],
+      pole_principal: "northreef",
+      approche: { accroche: "Votre site", email_objet: "Votre site", email: "Bonjour, notre agence certifiée Qualiopi…", script_appel: "", linkedin: "" },
+    };
+    const research = vi.fn().mockResolvedValue({ raw, tokensIn: 30000, tokensOut: 2000, searches: 3, fetches: 3, stop: "tool_use" });
+    await enrichPending({ store: m.store, today: "2026-11-05", offers: null, firms: async () => [], research, dailyLimit: 5 }, 1);
+    expect(m.opps.map((o) => [o.unit, o.score, o.primary])).toEqual([["northreef", 82, true], ["swipsales", 55, false]]); // Amandis sous le seuil : pas d'opportunité
+    const r = m.rows[0] as { research: { primaryUnit: string; units: { unit: string }[] }; drafts: { unit: string; issues: { rule: string }[] } };
+    expect(r.research.primaryUnit).toBe("northreef");
+    expect(r.research.units.map((u) => u.unit)).toEqual(["northreef", "swipsales", "amandis"]);
+    expect(r.drafts.unit).toBe("northreef");
+    expect(r.drafts.issues.map((i) => i.rule)).toContain("certification"); // bloqué « À vérifier »
+    expect(research.mock.calls[0][0]).toContain("DOSSIERS DES PÔLES");
   });
 });

@@ -25,6 +25,8 @@ export const CSV_COLUMNS: [string, (p: Prospect) => unknown][] = [
   ["Signal", (p) => p.signal],
   ["Date du signal", (p) => p.signalDate],
   ["Source du signal", (p) => p.signalSource],
+  ["Pôle principal", (p) => p.research?.primaryUnit || ""],
+  ["Scores par pôle", (p) => (p.research?.units || []).map((u) => `${u.unit} ${u.score}`).join(" | ")],
   ["Résumé", (p) => p.research?.summary || ""],
   ["Angles d’approche", (p) => (p.research?.angles || []).map((a) => a.angle).join(" | ")],
   ["Score", (p) => scoreOf(p).total],
