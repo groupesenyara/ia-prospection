@@ -1,11 +1,12 @@
--- Vérification de la migration 20261102125807_init.sql sur le projet Supabase.
+-- Vérification des migrations (init, hardening, prospecting, multi_units) sur le projet Supabase.
 -- À coller dans l'éditeur SQL (Supabase > SQL Editor). Lecture seule : ne modifie rien.
 -- Chaque ligne doit afficher ok = true.
 
 with
 expected_tables(t) as (values
   ('team_members'),('campaigns'),('prospects'),('interactions'),('outbox'),('content'),
-  ('metric_snapshots'),('spend'),('experiments'),('feedback'),('settings'),('ai_usage')),
+  ('metric_snapshots'),('spend'),('experiments'),('feedback'),('settings'),('ai_usage'),
+  ('job_signals'),('business_units'),('unit_facts'),('contacts'),('opportunities'),('missions')),
 expected_functions(f) as (values
   ('team_role'),('is_team'),('can_edit'),('is_owner'),
   ('guard_campaign'),('guard_interaction'),('guard_content'),('guard_outbox'),('touch_updated_at')),
@@ -17,15 +18,15 @@ expected_constraints(c) as (values
   ('envoi_valide'),('budget_valide'),('decision_finale')),
 realtime_tables(t) as (values ('prospects'),('interactions'),('campaigns'),('content'),('outbox'))
 select '1. tables présentes' as controle,
-       (select count(*) from expected_tables e join pg_tables p on p.schemaname = 'public' and p.tablename = e.t) = 12 as ok,
+       (select count(*) from expected_tables e join pg_tables p on p.schemaname = 'public' and p.tablename = e.t) = 18 as ok,
        (select string_agg(t, ', ') from expected_tables e where not exists (select 1 from pg_tables p where p.schemaname = 'public' and p.tablename = e.t)) as manquants
 union all
 select '2. RLS activée partout',
        not exists (select 1 from expected_tables e join pg_class c on c.relname = e.t and c.relnamespace = 'public'::regnamespace where not c.relrowsecurity),
        (select string_agg(e.t, ', ') from expected_tables e join pg_class c on c.relname = e.t and c.relnamespace = 'public'::regnamespace where not c.relrowsecurity)
 union all
-select '3. policies (4 par table + team_read = 45)',
-       (select count(*) from pg_policies where schemaname = 'public') = 45,
+select '3. policies (67 attendues)',
+       (select count(*) from pg_policies where schemaname = 'public') = 67,
        (select count(*)::text || ' trouvées' from pg_policies where schemaname = 'public')
 union all
 select '4. fonctions',

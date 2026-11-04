@@ -9,6 +9,7 @@ import { buildInteraction, enroll, patchAfter } from "../domain/sequence";
 import type { EventType, Prospect } from "../domain/types";
 import type { Data, ProspectRow } from "../lib/useData";
 import { api } from "../lib/supabase";
+import { ResearchPanel } from "./Research";
 
 type Draft = Partial<ProspectRow>;
 const blank: Draft = { company: "", website: "", sector: "", kind: KINDS[0], roles: "", source: "", segment: "", stage: STAGES[0], crit: {} };
@@ -69,9 +70,10 @@ export function ProspectPanel({ data, id, onClose, notify }: { data: Data; id: s
         </div>
         {dup && <div className="notice"><b>Doublon probable :</b> {dup.company} ({dup.stage}).</div>}
       </div>
+      {current && <ResearchPanel p={current} data={data} notify={notify} />}
       <div className="panel">
         <h3>Décideur et coordonnées</h3>
-        <div className="fgrid">{L("Nom", "decisionName")}{L("Fonction", "decisionTitle")}{L("E-mail professionnel", "email", "email")}{L("Source des coordonnées", "contactSource")}</div>
+        <div className="fgrid">{L("Nom", "decisionName")}{L("Fonction", "decisionTitle")}{L("E-mail professionnel", "email", "email")}{L("Téléphone professionnel", "phone", "tel")}{L("LinkedIn", "linkedin", "url")}{L("Source des coordonnées", "contactSource")}</div>
         {C("Nom et fonction vérifiés sur une source publique récente", "decisionVerified")}
         {C("Ne plus contacter (opposition exprimée)", "optOut")}
         {C("Accord écrit pour citer l’entreprise publiquement", "commsConsent")}

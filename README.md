@@ -47,7 +47,57 @@ npm run build
 
 - Framework : Vite. Les fonctions de `api/` sont détectées automatiquement.
 - Variables : voir `.env.example`. `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` et `CRON_SECRET` ne vont **jamais** dans une variable `VITE_`.
-- La tâche quotidienne est déclarée dans `vercel.json` : du lundi au vendredi à 6 h UTC.
+- Les tâches sont déclarées dans `vercel.json` : l'agent de prospection à 5 h UTC et la préparation des envois à 6 h UTC, du lundi au vendredi. L'agent peut durer jusqu'à 5 minutes (`maxDuration: 300`, ce qui demande le Fluid Compute de Vercel, activé par défaut).
+
+## Plateforme multi-pôles (Groupe Senyara)
+
+Un seul CRM pour trois activités : **Swipe Sales** (SaaS de recrutement commercial), **Amandis School** (formation) et **North Reef** (développement web, logiciels, IA, automatisation).
+
+- `prospects` reste le **référentiel unique des entreprises** : une fiche par entreprise, sans doublon.
+- `opportunities` : **une opportunité par entreprise et par pôle**, avec son pipeline, son score, sa valeur estimée et sa prochaine action. Une entreprise peut intéresser plusieurs pôles, mais **un seul la sollicite à la fois** (règle de la base, aussi appliquée à l'enregistrement des contacts).
+- `contacts` : plusieurs interlocuteurs par entreprise, chacun sourcé et avec son opposition propre.
+- `business_units` : les pôles et leurs objectifs. `unit_facts` : offres, tarifs, certifications et références par pôle. **Seul Yannis confirme un fait**, et l'IA n'utilise que le confirmé.
+- `interactions`, `outbox`, `campaigns`, `content` et `ai_usage` portent le pôle (`swipsales` par défaut), donc les échanges ne se mélangent pas.
+- `missions` : demandes faites en langage naturel à l'orchestrateur (lot 3).
+- **Transition Swipe Sales** : le pipeline historique (`prospects.stage`) reste la source, et l'opportunité Swipe Sales le suit par déclencheur. Les écrans actuels fonctionnent sans changement.
+- **Garde-fou** (`src/domain/claims.ts`) : un brouillon qui affirme une certification (Qualiopi…), un financement (OPCO, CPF…), un prix, une référence client, un chiffre de résultat ou une fausse urgence sans fait confirmé correspondant est bloqué « À vérifier ».
+- Dossiers des pôles : `src/domain/units.ts` (offres, cibles, signaux, qualification, pipeline, interdits). Indicateurs : `src/domain/opportunities.ts`.
+- Retour arrière : `supabase/rollback/20261105090000_multi_units_down.sql`, testé par `supabase/rollback.test.ts`.
+
+## Agent de prospection
+
+Chaque jour de semaine à 5 h UTC (`/api/cron/prospect`), ou à la demande depuis l'écran CRM (« Lancer l’agent maintenant », Yannis uniquement) :
+
+1. **Détection** des annonces commerciales récentes :
+   - **par défaut, par recherche web** : un seul appel par jour (4 recherches, aucune page lue, un thème différent chaque jour : SDR/BDR, terrain, business developer, technico-commercial, sédentaire B2B) ;
+   - **ou par l'API France Travail** si `FRANCE_TRAVAIL_CLIENT_ID` et `FRANCE_TRAVAIL_CLIENT_SECRET` sont renseignés (gratuite et plus exhaustive, métiers ROME D1401 à D1408).
+   
+   Dans les deux cas, les agences d'intérim, les cabinets et les annonces « pour le compte d'un client » sont écartés.
+2. **Fiche légale** : rapprochement avec le registre public des entreprises (API Recherche d'entreprises de l'État) : SIREN, activité, effectif et dirigeants. Seules les **PME de 10 à 249 salariés** sont retenues, et une entreprise n'est créée qu'une fois par SIREN.
+3. **Recherche web par l'IA** (Claude, recherche et lecture de pages faites par Anthropic) : site officiel, coordonnées publiques (standard, e-mails génériques et nominatifs publiés), décideurs, faits récents, signaux d'achat, angles d'approche, qualification, puis une **première approche personnalisée** (e-mail, LinkedIn, script d'appel) en brouillon à valider.
+4. **Rien n'est envoyé.** Les fiches arrivent en « Entreprise identifiée », et les brouillons attendent la validation de Yannis.
+
+Plafond : `RESEARCH_DAILY_LIMIT` fiches par jour (10 par défaut), partagé avec le bouton « Rechercher avec l’IA » de la fiche.
+
+**Coût** (modèle par défaut `RESEARCH_MODEL=claude-haiku-5-5`, à 0,10 $ / 0,50 $ par million de jetons, plus 0,01 $ par recherche web) :
+
+| Étape | Limites | Coût estimé |
+|---|---|---|
+| Détection web (1 fois par jour) | 4 recherches, 0 page lue | ~0,05 $ |
+| Recherche d'une entreprise | 3 recherches, 3 pages de 5 000 jetons au plus | ~0,03 à 0,05 $ |
+| **Journée de 10 fiches** | | **~0,40 à 0,60 $** |
+
+Le registre des entreprises et France Travail sont gratuits. Le coût estimé de chaque dossier et de chaque passage de l'agent est affiché dans l'interface. La rédaction à la demande (« Rédiger avec Claude ») reste sur `ANTHROPIC_MODEL`.
+
+Le CRM s'exporte en CSV (bouton « Exporter ») avec les coordonnées, leurs sources, le signal, le résumé et les angles.
+
+### Cadre de collecte (RGPD, prospection B2B)
+
+- **Données publiques et professionnelles uniquement**, chacune avec l'adresse de la page où elle a été lue. Une coordonnée sans source est rejetée par le serveur, et la base refuse une coordonnée sans source (`coordonnees_sourcees`).
+- **Rien n'est deviné** : pas d'adresse reconstituée (prénom.nom@), pas de numéro déduit. Les adresses personnelles (gmail, hotmail, orange…) sont rejetées.
+- **Pas d'ouverture de LinkedIn, Facebook ou Instagram** par l'agent (conditions d'utilisation). L'adresse d'un profil peut être citée depuis un résultat de recherche.
+- **Information à la première prise de contact** : chaque e-mail cite la source de l'adresse et permet de refuser les relances. Une opposition passe la fiche en « Ne plus contacter » : plus aucune recherche ni aucun contact (règle portée par la base).
+- **Durée de conservation** : un prospect sans réponse ne doit pas être gardé plus de 3 ans après le dernier contact (recommandation CNIL). La purge reste à mettre en place.
 
 ## Architecture
 
@@ -58,7 +108,8 @@ src/domain/     Règles métier pures, testées : score, doublons, séquences de
 src/lib/        Client Supabase, conversion base <-> application, hook de données temps réel
 src/ui/         Interface React (espaces de pilotage, fiche entreprise)
 api/ai/         POST /api/ai/generate : rédaction (prompt construit côté serveur, plafond, journal d'usage)
-api/cron/       GET /api/cron/daily : prépare les envois du jour en « À valider » et le rapport. N'envoie rien.
+api/cron/       GET /api/cron/prospect : agent de prospection (5 h UTC). GET /api/cron/daily : prépare les envois du jour (6 h UTC). N'envoient rien.
+api/research.ts POST : recherche IA d'une fiche, ou lancement de l'agent par Yannis
 supabase/       Migration + tests de la migration sur Postgres (PGlite)
 scripts/        Import des données du prototype
 prototype/      Prototype complet (HTML) : référence fonctionnelle et visuelle pour les écrans à porter

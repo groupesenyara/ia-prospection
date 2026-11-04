@@ -19,6 +19,11 @@ export function prospectFacts(p: Prospect): string {
   add("Décideur", p.decisionName && p.decisionVerified ? `${p.decisionName}, ${p.decisionTitle}` : "", "FAIT");
   add("Signal d’achat", p.signal, p.signalSource ? `FAIT, daté du ${p.signalDate || "?"}` : "HYPOTHÈSE");
   add("Besoin supposé", p.need, "HYPOTHÈSE");
+  const r = p.research;
+  if (r?.summary) lines.push(`- Présentation [FAIT, recherche du ${r.at || "?"}] : ${r.summary}`);
+  for (const f of [...(r?.signals || []), ...(r?.facts || [])].slice(0, 8)) lines.push(`- ${f.text} [FAIT, source : ${f.url}${f.date ? `, ${f.date}` : ""}]`);
+  for (const o of (r?.offers || []).slice(0, 5)) lines.push(`- Offre publiée le ${o.date} : ${o.title} [FAIT, source : ${o.url}]`);
+  for (const a of (r?.angles || []).slice(0, 4)) lines.push(`- Angle d’approche possible : ${a.angle} (appui : ${a.basis}) [PISTE]`);
   return lines.join("\n") || "- (peu d'informations)";
 }
 
@@ -26,7 +31,7 @@ export function outreachPrompt(p: Prospect, facts: string[], signature: string):
   return `Tu prépares des brouillons de prospection B2B en français pour SwipSales, plateforme de recrutement réservée aux profils commerciaux. Un humain relira et enverra lui-même.
 
 ${RULES}
-- E-mail : 120 mots maximum, une seule question, un appel à l'action simple ; il se termine par une phrase qui permet de refuser les relances. Signature : ${signature || "[Prénom Nom]"}.
+- E-mail : 120 mots maximum, une seule question, un appel à l'action simple ; personnalise-le avec un fait sourcé ; il cite la source de l'adresse en une phrase discrète et se termine par une phrase qui permet de refuser les relances. Signature : ${signature || "[Prénom Nom]"}.
 - LinkedIn : 300 caractères maximum.
 
 FAITS PRODUIT CONFIRMÉS
