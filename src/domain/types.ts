@@ -60,6 +60,7 @@ export interface Prospect {
   headcount?: string;
   naf?: string;
   origin?: string;
+  assignedBy?: string; // 'legacy' : pipeline Swipe Sales ; 'orchestrateur' : pôle choisi par l'agent
   research?: ResearchDossier | null;
   researchStatus?: "" | "à rechercher" | "en cours" | "fait" | "échec";
   researchedAt?: string | null;

@@ -42,3 +42,13 @@ export async function findFirms(name: string, f: Fetch = fetch, attempt = 0): Pr
   if (!res.ok) throw new Error(`Registre des entreprises : ${res.status}`);
   return parseFirms(await res.json());
 }
+
+/** Registre : entreprises actives d'un département, pour une activité (code NAF) et des tranches d'effectif. 25 par page. */
+export async function registryPage(q: { departement: string; naf: string; tranches: string[]; page: number }, f: Fetch = fetch, attempt = 0): Promise<{ firms: Firm[]; totalPages: number }> {
+  const params = new URLSearchParams({ departement: q.departement, activite_principale: q.naf, tranche_effectif_salarie: q.tranches.join(","), etat_administratif: "A", per_page: "25", page: String(q.page) });
+  const res = await f(`https://recherche-entreprises.api.gouv.fr/search?${params}`, { headers: { accept: "application/json" } });
+  if (res.status === 429 && attempt < 3) { await new Promise((r) => setTimeout(r, 1200 * (attempt + 1))); return registryPage(q, f, attempt + 1); }
+  if (!res.ok) throw new Error(`Registre des entreprises : ${res.status}`);
+  const body = (await res.json()) as { total_pages?: number };
+  return { firms: parseFirms(body), totalPages: Number(body.total_pages) || 1 };
+}
