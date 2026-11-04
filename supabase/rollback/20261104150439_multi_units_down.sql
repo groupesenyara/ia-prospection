@@ -1,4 +1,4 @@
--- Retour arrière de 20261105090000_multi_units.sql.
+-- Retour arrière de 20261104150439_multi_units.sql.
 -- ATTENTION : supprime les opportunités, contacts, faits par pôle et missions saisis depuis la migration.
 -- Les fiches entreprises, interactions, campagnes et envois sont conservés (seules les colonnes de pôle sont retirées).
 -- À exécuter uniquement après validation de Yannis, et après un export des tables concernées.

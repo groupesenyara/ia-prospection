@@ -12,13 +12,13 @@ describe("retour arrière multi-pôles", () => {
       create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;`);
     for (const m of ["20261102125807_init", "20261102125942_hardening", "20261104134714_prospecting"]) await db.exec(sql(`./migrations/${m}.sql`));
     await db.exec(`insert into public.prospects (company, source, stage) values ('Gardée', 'x', 'Contact effectué')`);
-    await db.exec(sql("./migrations/20261105090000_multi_units.sql"));
+    await db.exec(sql("./migrations/20261104150439_multi_units.sql"));
     expect((await db.query<{ n: number }>(`select count(*)::int n from public.opportunities`)).rows[0].n).toBe(1);
-    await db.exec(sql("./rollback/20261105090000_multi_units_down.sql"));
+    await db.exec(sql("./rollback/20261104150439_multi_units_down.sql"));
     expect((await db.query<{ n: number }>(`select count(*)::int n from public.prospects`)).rows[0].n).toBe(1);
     expect((await db.query(`select to_regclass('public.opportunities') r`)).rows[0]).toEqual({ r: null });
     await db.exec(`insert into public.interactions (prospect_id, type) select id, 'contact_email' from public.prospects`);
-    await db.exec(sql("./migrations/20261105090000_multi_units.sql"));
+    await db.exec(sql("./migrations/20261104150439_multi_units.sql"));
     expect((await db.query<{ stage: string; active: boolean }>(`select stage, active from public.opportunities`)).rows).toEqual([{ stage: "Contact effectué", active: true }]);
   });
 });
