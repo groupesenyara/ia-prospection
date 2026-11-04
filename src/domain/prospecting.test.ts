@@ -180,3 +180,11 @@ describe("détection par le registre", () => {
     expect(prospectFromFirm(f, "swipsales", "2026-11-05").assignedBy).toBe("legacy");
   });
 });
+
+describe("pôle principal par défaut", () => {
+  it("sans évaluation des pôles, reprend le pôle de la cible du registre", () => {
+    const { dossier, opportunities } = normalizeResearch({ resume: "Boutique", contacts: [] }, { ...prospect(), origin: "registre_northreef" } as Prospect, "2026-11-05");
+    expect(dossier.primaryUnit).toBe("northreef");
+    expect(opportunities.map((o) => [o.unit, o.primary])).toEqual([["northreef", true]]);
+  });
+});

@@ -34,7 +34,7 @@ export function liveDeps(db: SupabaseClient, deadline?: number): Deps {
     registry: (q) => registryPage(q),
     research: api
       ? async (prompt) => {
-        const r = await runAgent(api, model, { prompt, saveTool: SAVE_TOOL, saveSchema: saveToolSchema, saveDescription: "Enregistre la fiche de prospection finale. À appeler une seule fois, quand les recherches sont terminées.", searches: 3, fetches: 3, effort: "medium" });
+        const r = await runAgent(api, model, { prompt, saveTool: SAVE_TOOL, saveSchema: saveToolSchema, saveDescription: "Enregistre la fiche de prospection finale. À appeler une seule fois, quand les recherches sont terminées.", searches: 3, fetches: 3, effort: "medium", maxTokens: 16000 });
         return { ...r, usd: estimateUsd(model, r) };
       }
       : null,
