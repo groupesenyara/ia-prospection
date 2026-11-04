@@ -30,6 +30,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(new URL("./migrations/20261102125807_init.sql", import.meta.url), "utf8"));
   await db.exec(readFileSync(new URL("./migrations/20261102125942_hardening.sql", import.meta.url), "utf8"));
   await db.exec(readFileSync(new URL("./migrations/20261104134714_prospecting.sql", import.meta.url), "utf8"));
+  await db.exec(readFileSync(new URL("./migrations/20261105090000_multi_units.sql", import.meta.url), "utf8"));
   await db.exec(`
     grant usage on schema public to authenticated, anon;
     grant select, insert, update, delete on all tables in schema public to authenticated;
@@ -109,5 +110,45 @@ describe("migration et règles", () => {
     await expect(as(EDITOR, `insert into job_signals (source, external_id, company, title) values ('france_travail', 'o1', 'X', 'Y')`)).rejects.toThrow(/duplicate key/);
     expect((await as(OUTSIDER, `select * from job_signals`)).rows).toHaveLength(0);
     expect((await as(EDITOR, `select * from job_signals`)).rows).toHaveLength(1);
+  });
+
+  it("multi-pôles : chaque fiche Swipe Sales a son opportunité, synchronisée avec le pipeline existant", async () => {
+    const id = (await as(EDITOR, `insert into prospects (company, source) values ('Multi Co', 'https://x') returning id`)).rows[0].id;
+    let o = (await as(EDITOR, `select unit, stage, status, active from opportunities where prospect_id = $1`, [id])).rows;
+    expect(o).toEqual([{ unit: "swipsales", stage: "Entreprise identifiée", status: "ouverte", active: false }]);
+    await as(EDITOR, `update prospects set stage = 'Contact effectué', next_action = 'Relance 1' where id = $1`, [id]);
+    o = (await as(EDITOR, `select stage, active, next_action from opportunities where prospect_id = $1`, [id])).rows;
+    expect(o).toEqual([{ stage: "Contact effectué", active: true, next_action: "Relance 1" }]);
+    // l'application actuelle journalise sans connaître les pôles : rattaché à Swipe Sales
+    await as(EDITOR, `insert into interactions (prospect_id, type) values ($1, 'contact_email')`, [id]);
+    expect((await as(EDITOR, `select unit from interactions where prospect_id = $1`, [id])).rows[0].unit).toBe("swipsales");
+  });
+
+  it("multi-pôles : une seule opportunité ouverte par pôle, un seul pôle sollicite à la fois", async () => {
+    const id = (await as(EDITOR, `select id from prospects where company = 'Multi Co'`)).rows[0].id;
+    await as(EDITOR, `insert into opportunities (prospect_id, unit, reason) values ($1, 'amandis', 'Recrute 3 commerciaux juniors : besoin de formation')`, [id]);
+    await expect(as(EDITOR, `insert into opportunities (prospect_id, unit) values ($1, 'amandis')`, [id])).rejects.toThrow(/opportunities_one_open_per_unit/);
+    await expect(as(EDITOR, `update opportunities set active = true where prospect_id = $1 and unit = 'amandis'`, [id])).rejects.toThrow(/déjà cette entreprise/);
+    await expect(as(EDITOR, `insert into interactions (prospect_id, type, unit) values ($1, 'contact_email', 'amandis')`, [id])).rejects.toThrow(/déjà sollicitée par Swipe Sales/);
+    // Swipe Sales mis en attente -> Amandis peut prendre le relais
+    await as(EDITOR, `update opportunities set active = false, status = 'en attente' where prospect_id = $1 and unit = 'swipsales'`, [id]);
+    await as(EDITOR, `update opportunities set active = true where prospect_id = $1 and unit = 'amandis'`, [id]);
+    await as(EDITOR, `insert into interactions (prospect_id, type, unit) values ($1, 'contact_email', 'amandis')`, [id]);
+    // et le pipeline Swipe Sales ne réactive pas Swipe Sales par-dessus Amandis
+    await as(EDITOR, `update prospects set next_action = 'Relance 2' where id = $1`, [id]);
+    expect((await as(EDITOR, `select active from opportunities where prospect_id = $1 and unit = 'swipsales'`, [id])).rows[0].active).toBe(false);
+  });
+
+  it("multi-pôles : opposition, faits confirmés par l'owner seul, contacts sourcés", async () => {
+    const id = (await as(EDITOR, `insert into prospects (company, source, opt_out) values ('Stop Multi', 'x', true) returning id`)).rows[0].id;
+    await expect(as(EDITOR, `insert into opportunities (prospect_id, unit, active) values ($1, 'northreef', true)`, [id])).rejects.toThrow(/ne plus être contactée/);
+    await as(EDITOR, `insert into unit_facts (unit, kind, text) values ('amandis', 'certification', 'Certifié Qualiopi')`);
+    await expect(as(EDITOR, `update unit_facts set status = 'Confirmé' where text = 'Certifié Qualiopi'`)).rejects.toThrow(/owner/);
+    await as(OWNER, `update unit_facts set status = 'Confirmé' where text = 'Certifié Qualiopi'`);
+    expect((await as(OWNER, `select confirmed_by from unit_facts where text = 'Certifié Qualiopi'`)).rows[0].confirmed_by).toBe(OWNER);
+    await expect(as(EDITOR, `insert into contacts (prospect_id, name, email) values ($1, 'X', 'x@y.fr')`, [id])).rejects.toThrow(/contact_source/);
+    expect((await as(OUTSIDER, `select * from opportunities`)).rows).toHaveLength(0);
+    expect((await as(EDITOR, `select id from business_units order by sort`)).rows.map((r: { id: string }) => r.id)).toEqual(["swipsales", "amandis", "northreef"]);
+    await expect(as(EDITOR, `update business_units set name = 'X' where id = 'amandis' returning id`)).resolves.toMatchObject({ rows: [] });
   });
 });

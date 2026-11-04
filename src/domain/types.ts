@@ -105,6 +105,8 @@ export interface Interaction {
   channel?: string;
   objection?: string;
   campaignId?: string | null;
+  unit?: string; // pôle (Swipe Sales par défaut)
+  opportunityId?: string | null;
 }
 
 export interface CampaignStep { day: number; channel: string; template: string }
@@ -143,4 +145,27 @@ export interface ContentItem {
   date: string;
   prospectId: string;
   kind: string;
+}
+
+/** Opportunité d'un pôle sur une entreprise (une seule ouverte par pôle, une seule active par entreprise). */
+export interface Opportunity {
+  id: string;
+  prospectId: string;
+  unit: string;
+  stage: string;
+  status: "ouverte" | "en attente" | "gagnée" | "perdue";
+  active: boolean;
+  score: number | null;
+  crit: Record<string, Criterion>;
+  offer: string;
+  reason: string;
+  need: string;
+  signal: string;
+  signalSource: string;
+  signalDate: string;
+  valueEstimate: number | null;
+  nextAction: string;
+  nextDate: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

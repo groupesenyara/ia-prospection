@@ -49,6 +49,21 @@ npm run build
 - Variables : voir `.env.example`. `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` et `CRON_SECRET` ne vont **jamais** dans une variable `VITE_`.
 - Les tâches sont déclarées dans `vercel.json` : l'agent de prospection à 5 h UTC et la préparation des envois à 6 h UTC, du lundi au vendredi. L'agent peut durer jusqu'à 5 minutes (`maxDuration: 300`, ce qui demande le Fluid Compute de Vercel, activé par défaut).
 
+## Plateforme multi-pôles (Groupe Senyara)
+
+Un seul CRM pour trois activités : **Swipe Sales** (SaaS de recrutement commercial), **Amandis School** (formation) et **North Reef** (développement web, logiciels, IA, automatisation).
+
+- `prospects` reste le **référentiel unique des entreprises** : une fiche par entreprise, sans doublon.
+- `opportunities` : **une opportunité par entreprise et par pôle**, avec son pipeline, son score, sa valeur estimée et sa prochaine action. Une entreprise peut intéresser plusieurs pôles, mais **un seul la sollicite à la fois** (règle de la base, aussi appliquée à l'enregistrement des contacts).
+- `contacts` : plusieurs interlocuteurs par entreprise, chacun sourcé et avec son opposition propre.
+- `business_units` : les pôles et leurs objectifs. `unit_facts` : offres, tarifs, certifications et références par pôle. **Seul Yannis confirme un fait**, et l'IA n'utilise que le confirmé.
+- `interactions`, `outbox`, `campaigns`, `content` et `ai_usage` portent le pôle (`swipsales` par défaut), donc les échanges ne se mélangent pas.
+- `missions` : demandes faites en langage naturel à l'orchestrateur (lot 3).
+- **Transition Swipe Sales** : le pipeline historique (`prospects.stage`) reste la source, et l'opportunité Swipe Sales le suit par déclencheur. Les écrans actuels fonctionnent sans changement.
+- **Garde-fou** (`src/domain/claims.ts`) : un brouillon qui affirme une certification (Qualiopi…), un financement (OPCO, CPF…), un prix, une référence client, un chiffre de résultat ou une fausse urgence sans fait confirmé correspondant est bloqué « À vérifier ».
+- Dossiers des pôles : `src/domain/units.ts` (offres, cibles, signaux, qualification, pipeline, interdits). Indicateurs : `src/domain/opportunities.ts`.
+- Retour arrière : `supabase/rollback/20261105090000_multi_units_down.sql`, testé par `supabase/rollback.test.ts`.
+
 ## Agent de prospection
 
 Chaque jour de semaine à 5 h UTC (`/api/cron/prospect`), ou à la demande depuis l'écran CRM (« Lancer l’agent maintenant », Yannis uniquement) :
